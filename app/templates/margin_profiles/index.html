@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Perfis de Margem{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Perfis de Margem</h1>
+  <a href="{{ url_for('margin_profiles.create') }}" class="btn btn-primary">Novo perfil</a>
+</div>
+<p class="muted">Templates reutilizáveis de taxas de plataforma/frete usados ao registrar uma venda. Editar um perfil não altera vendas já registradas.</p>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>Nome</th><th class="text-right">Taxa plataforma</th><th class="text-right">Taxa fixa</th><th class="text-right">Frete</th><th class="text-right">Outras taxas</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for m in profiles %}
+    <tr>
+      <td><a href="{{ url_for('margin_profiles.edit', profile_id=m.id) }}">{{ m.name }}</a></td>
+      <td class="text-right">{{ "%.2f"|format(m.platform_fee_pct * 100) }}%</td>
+      <td class="text-right">R$ {{ "%.2f"|format(m.fixed_fee_cents / 100) }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(m.shipping_cost_cents / 100) }}</td>
+      <td class="text-right">{{ "%.2f"|format(m.other_fee_pct * 100) }}%</td>
+      <td>{% if m.active %}<span class="badge badge-completed">ativo</span>{% else %}<span class="badge badge-cancelled">inativo</span>{% endif %}</td>
+      <td>
+        <a href="{{ url_for('margin_profiles.edit', profile_id=m.id) }}" class="btn btn-sm">Editar</a>
+        {% if m.active %}
+        <form class="inline" method="post" action="{{ url_for('margin_profiles.deactivate', profile_id=m.id) }}">
+          {% include "_csrf_field.html" %}
+          <button class="btn btn-sm btn-danger" type="submit">Desativar</button>
+        </form>
+        {% else %}
+        <form class="inline" method="post" action="{{ url_for('margin_profiles.activate', profile_id=m.id) }}">
+          {% include "_csrf_field.html" %}
+          <button class="btn btn-sm" type="submit">Reativar</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="muted">Nenhum perfil cadastrado.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

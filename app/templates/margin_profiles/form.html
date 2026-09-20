@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar perfil' if profile else 'Novo perfil' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ 'Editar perfil' if profile else 'Novo perfil de margem' }}</h1>
+  <a href="{{ url_for('margin_profiles.index') }}" class="btn">Voltar</a>
+</div>
+
+<form class="card" method="post" style="max-width:520px;">
+  {% include "_csrf_field.html" %}
+  <label>Nome</label>
+  <input type="text" name="name" value="{{ (form.name if form else profile.name) or '' }}" required placeholder="Ex: Shopee Padrão">
+
+  <div class="form-row">
+    <div>
+      <label>Taxa da plataforma (%)</label>
+      <input type="text" inputmode="decimal" name="platform_fee_pct"
+             value="{{ form.platform_fee_pct if form else ('%.2f'|format(profile.platform_fee_pct * 100) if profile else '0') }}">
+    </div>
+    <div>
+      <label>Taxa fixa por pedido (R$)</label>
+      <input type="text" inputmode="decimal" name="fixed_fee"
+             value="{{ form.fixed_fee if form else ('%.2f'|format(profile.fixed_fee_cents / 100) if profile else '0.00') }}">
+    </div>
+  </div>
+  <div class="form-row">
+    <div>
+      <label>Custo de frete assumido (R$)</label>
+      <input type="text" inputmode="decimal" name="shipping_cost"
+             value="{{ form.shipping_cost if form else ('%.2f'|format(profile.shipping_cost_cents / 100) if profile else '0.00') }}">
+    </div>
+    <div>
+      <label>Outras taxas (%)</label>
+      <input type="text" inputmode="decimal" name="other_fee_pct"
+             value="{{ form.other_fee_pct if form else ('%.2f'|format(profile.other_fee_pct * 100) if profile else '0') }}">
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary" style="margin-top:14px;">Salvar</button>
+</form>
+{% endblock %}

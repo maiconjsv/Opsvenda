@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar produto' if product else 'Novo produto' }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ 'Editar produto' if product else 'Novo produto' }}</h1>
+  <a href="{{ url_for('products.index') }}" class="btn">Voltar</a>
+</div>
+
+<form class="card" method="post" style="max-width:520px;">
+  {% include "_csrf_field.html" %}
+  <div class="form-row">
+    <div>
+      <label>SKU</label>
+      <input type="text" name="sku" value="{{ (form.sku if form else product.sku) or '' }}" required>
+    </div>
+  </div>
+  <label>Nome</label>
+  <input type="text" name="name" value="{{ (form.name if form else product.name) or '' }}" required>
+  <div class="form-row">
+    <div>
+      <label>Preço de venda atual (R$)</label>
+      <input type="text" inputmode="decimal" name="price"
+             value="{{ form.price if form else ('%.2f'|format(product.current_price) if product else '') }}" required>
+    </div>
+    <div>
+      <label>Custo unitário atual (R$)</label>
+      <input type="text" inputmode="decimal" name="cost"
+             value="{{ form.cost if form else ('%.2f'|format(product.current_cost) if product else '0.00') }}">
+    </div>
+  </div>
+  {% if not product %}
+  <label>Estoque inicial</label>
+  <input type="number" name="stock_qty" value="{{ form.stock_qty if form else 0 }}" min="0">
+  {% endif %}
+  <p class="muted" style="margin-top:14px;">
+    Alterar o preço/custo aqui afeta apenas vendas futuras — vendas já registradas mantêm os valores da época em que foram feitas.
+  </p>
+  <button type="submit" class="btn btn-primary" style="margin-top:8px;">Salvar</button>
+</form>
+
+{% if product %}
+<div class="card" style="max-width:520px;">
+  <h2>Ajustar estoque</h2>
+  <p class="muted">Estoque atual: <strong>{{ product.stock_qty }}</strong></p>
+  <form method="post" action="{{ url_for('products.adjust_stock', product_id=product.id) }}">
+    {% include "_csrf_field.html" %}
+    <div class="form-row">
+      <div>
+        <label>Quantidade (use negativo para baixa)</label>
+        <input type="number" name="delta_qty" required>
+      </div>
+      <div>
+        <label>Motivo</label>
+        <select name="reason">
+          <option value="reposicao">Reposição</option>
+          <option value="ajuste">Ajuste manual</option>
+          <option value="perda">Perda/avaria</option>
+        </select>
+      </div>
+    </div>
+    <label>Observação</label>
+    <input type="text" name="notes">
+    <button type="submit" class="btn" style="margin-top:8px;">Aplicar</button>
+  </form>
+
+  {% if product.stock_movements %}
+  <h3 style="margin-top:20px;">Histórico</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Data</th><th>Qtd</th><th>Motivo</th><th>Obs.</th></tr></thead>
+    <tbody>
+      {% for m in product.stock_movements[:20] %}
+      <tr>
+        <td>{{ m.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+        <td>{{ '+' if m.delta_qty > 0 }}{{ m.delta_qty }}</td>
+        <td>{{ m.reason }}</td>
+        <td>{{ m.notes or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

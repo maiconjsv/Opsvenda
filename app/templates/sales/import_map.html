@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Mapear colunas{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Mapear colunas do CSV</h1>
+  <a href="{{ url_for('sales.import_start') }}" class="btn">Voltar</a>
+</div>
+
+<div class="card">
+  <h3>Prévia (primeiras linhas)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>{% for h in header %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in preview_rows %}
+        <tr>{% for h in header %}<td>{{ row.get(h, '') }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<form class="card" method="post" style="max-width:560px;">
+  {% include "_csrf_field.html" %}
+  <h3>Mapeamento de colunas</h3>
+
+  <label>SKU do produto *</label>
+  <select name="map_sku" required>
+    {% for h in header %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+  </select>
+
+  <label>Quantidade *</label>
+  <select name="map_quantity" required>
+    {% for h in header %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+  </select>
+
+  <label>Preço unitário *</label>
+  <select name="map_unit_price" required>
+    {% for h in header %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+  </select>
+
+  <label>Número do pedido (opcional)</label>
+  <select name="map_order_number">
+    <option value="">(nenhum)</option>
+    {% for h in header %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+  </select>
+
+  <label>Nome do produto (usado só ao criar produto novo)</label>
+  <select name="map_product_name">
+    <option value="">(nenhum)</option>
+    {% for h in header %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+  </select>
+
+  <label>Data da venda (opcional, padrão: agora)</label>
+  <select name="map_sale_date">
+    <option value="">(nenhum)</option>
+    {% for h in header %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
+  </select>
+
+  <hr style="margin:20px 0; border-color: var(--border);">
+
+  <label>Perfil de margem/taxas a aplicar</label>
+  <select name="margin_profile_id" required>
+    <option value="">Selecione...</option>
+    {% for m in profiles %}
+    <option value="{{ m.id }}">{{ m.name }}</option>
+    {% endfor %}
+  </select>
+
+  <label style="display:flex; align-items:center; gap:8px; margin-top:16px;">
+    <input type="checkbox" name="create_missing_products" style="width:auto;">
+    Criar produtos automaticamente quando o SKU não existir (custo inicial R$ 0,00 — ajuste depois)
+  </label>
+
+  <button type="submit" class="btn btn-primary" style="margin-top:16px;">Importar</button>
+</form>
+{% endblock %}

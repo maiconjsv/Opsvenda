@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Resultado da importação{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Resultado da importação</h1>
+  <a href="{{ url_for('sales.index') }}" class="btn btn-primary">Ver vendas</a>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="label">Vendas criadas</div>
+    <div class="value positive">{{ result.sales_created }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Produtos novos criados</div>
+    <div class="value">{{ result.products_created }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Linhas com erro</div>
+    <div class="value {{ 'negative' if result.errors }}">{{ result.errors|length }}</div>
+  </div>
+</div>
+
+{% if result.errors %}
+<div class="card">
+  <h3>Linhas ignoradas</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Linha</th><th>Motivo</th></tr></thead>
+      <tbody>
+        {% for err in result.errors %}
+        <tr><td>{{ err.row_number }}</td><td>{{ err.reason }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

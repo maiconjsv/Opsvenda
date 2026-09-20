@@ -1,0 +1,4 @@
+Numero do Pedido,SKU,Nome do Produto,Quantidade,Preco Unitario,Data
+PED-001,ABC123,Camiseta Azul,2,29.90,2026-01-10
+PED-002,NEW-999,Produto Novo,1,49.90,2026-01-11
+PED-003,ABC123,Camiseta Azul,,29.90,2026-01-12

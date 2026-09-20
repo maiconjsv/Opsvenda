@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content_guest %}
+<div class="login-page">
+  <form class="card login-card" method="post">
+    {% include "_csrf_field.html" %}
+    <h1>OpsVenda</h1>
+    <p class="muted">Entre para continuar</p>
+    <label>Usuário</label>
+    <input type="text" name="username" value="{{ username or '' }}" autofocus required>
+    <label>Senha</label>
+    <input type="password" name="password" required>
+    <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+  </form>
+</div>
+{% endblock %}

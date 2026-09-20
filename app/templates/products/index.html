@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Produtos</h1>
+  <a href="{{ url_for('products.create') }}" class="btn btn-primary">Novo produto</a>
+</div>
+
+<form class="card" method="get" style="margin-bottom:16px;">
+  <div class="form-row">
+    <div>
+      <label>Buscar</label>
+      <input type="text" name="q" value="{{ query }}" placeholder="Nome ou SKU">
+    </div>
+    <div style="display:flex; align-items:flex-end; gap:8px;">
+      <label style="display:flex; align-items:center; gap:6px; margin:0;">
+        <input type="checkbox" name="inactive" value="1" style="width:auto;" {{ 'checked' if show_inactive }}>
+        Mostrar inativos
+      </label>
+    </div>
+    <div style="display:flex; align-items:flex-end;">
+      <button class="btn" type="submit">Filtrar</button>
+    </div>
+  </div>
+</form>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>SKU</th><th>Nome</th><th class="text-right">Preço atual</th><th class="text-right">Estoque</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for p in products %}
+    <tr>
+      <td>{{ p.sku }}</td>
+      <td><a href="{{ url_for('products.edit', product_id=p.id) }}">{{ p.name }}</a></td>
+      <td class="text-right">R$ {{ "%.2f"|format(p.current_price) }}</td>
+      <td class="text-right">{{ p.stock_qty }}</td>
+      <td>{% if p.active %}<span class="badge badge-completed">ativo</span>{% else %}<span class="badge badge-cancelled">inativo</span>{% endif %}</td>
+      <td>
+        <a href="{{ url_for('products.edit', product_id=p.id) }}" class="btn btn-sm">Editar</a>
+        {% if p.active %}
+        <form class="inline" method="post" action="{{ url_for('products.deactivate', product_id=p.id) }}">
+          {% include "_csrf_field.html" %}
+          <button class="btn btn-sm btn-danger" type="submit">Desativar</button>
+        </form>
+        {% else %}
+        <form class="inline" method="post" action="{{ url_for('products.activate', product_id=p.id) }}">
+          {% include "_csrf_field.html" %}
+          <button class="btn btn-sm" type="submit">Reativar</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted">Nenhum produto encontrado.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

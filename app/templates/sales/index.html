@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Vendas{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Vendas</h1>
+  <div class="btn-group">
+    <a href="{{ url_for('sales.import_start') }}" class="btn">Importar CSV</a>
+    <a href="{{ url_for('sales.create') }}" class="btn btn-primary">Nova venda</a>
+  </div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>#</th><th>Data</th><th>Pedido</th><th>Itens</th><th class="text-right">Total</th><th class="text-right">Lucro</th><th>Status</th><th>Origem</th></tr>
+  </thead>
+  <tbody>
+    {% for s in sales %}
+    <tr>
+      <td><a href="{{ url_for('sales.detail', sale_id=s.id) }}">{{ s.id }}</a></td>
+      <td>{{ s.sale_date.strftime('%d/%m/%Y %H:%M') }}</td>
+      <td>{{ s.order_number or '-' }}</td>
+      <td>{{ s.items|length }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(s.gross_total_cents / 100) }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(s.net_profit_cents / 100) }}</td>
+      <td><span class="badge badge-{{ s.status }}">{{ s.status }}</span></td>
+      <td>{{ s.source }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="muted">Nenhuma venda registrada ainda.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

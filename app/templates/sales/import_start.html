@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Importar CSV{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Importar vendas (CSV)</h1>
+  <a href="{{ url_for('sales.index') }}" class="btn">Voltar</a>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <p class="muted">
+    Envie o arquivo CSV exportado do Shopee Seller Center (ou qualquer CSV com
+    colunas de SKU, quantidade e preço). No próximo passo você indica qual
+    coluna corresponde a cada campo.
+  </p>
+  <form method="post" enctype="multipart/form-data">
+    {% include "_csrf_field.html" %}
+    <label>Arquivo CSV</label>
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit" class="btn btn-primary" style="margin-top:14px;">Continuar</button>
+  </form>
+</div>
+{% endblock %}

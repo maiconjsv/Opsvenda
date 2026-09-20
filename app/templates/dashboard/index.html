@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <a href="{{ url_for('dashboard.export_csv', **filters) }}" class="btn">Exportar CSV</a>
+</div>
+
+<form class="card" method="get">
+  <div class="form-row">
+    <div>
+      <label>De</label>
+      <input type="date" name="date_from" value="{{ filters.get('date_from', '') }}">
+    </div>
+    <div>
+      <label>Até</label>
+      <input type="date" name="date_to" value="{{ filters.get('date_to', '') }}">
+    </div>
+    <div>
+      <label>Produto</label>
+      <select name="product_id">
+        <option value="">Todos</option>
+        {% for p in products %}
+        <option value="{{ p.id }}" {{ 'selected' if filters.get('product_id') == p.id|string }}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex; align-items:flex-end;">
+      <button class="btn btn-primary" type="submit">Filtrar</button>
+    </div>
+  </div>
+</form>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="label">Receita bruta</div>
+    <div class="value">R$ {{ "%.2f"|format(kpis.gross_total) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Taxas + frete</div>
+    <div class="value">R$ {{ "%.2f"|format(kpis.fees_total) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Custo total</div>
+    <div class="value">R$ {{ "%.2f"|format(kpis.cost_total) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Lucro líquido</div>
+    <div class="value {{ 'positive' if kpis.profit_total >= 0 else 'negative' }}">R$ {{ "%.2f"|format(kpis.profit_total) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Unidades vendidas</div>
+    <div class="value">{{ kpis.units_sold }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="label">Margem média</div>
+    <div class="value {{ 'positive' if kpis.avg_margin_pct >= 0 else 'negative' }}">{{ "%.1f"|format(kpis.avg_margin_pct) }}%</div>
+  </div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>Data</th><th>Produto</th><th class="text-right">Qtd</th><th class="text-right">Bruto</th><th class="text-right">Lucro</th><th class="text-right">Margem</th></tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.sale.sale_date.strftime('%d/%m/%Y') }}</td>
+      <td>{{ item.product_sku_snapshot }} — {{ item.product_name_snapshot }}</td>
+      <td class="text-right">{{ item.quantity }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(item.gross_total_cents / 100) }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(item.net_profit_cents / 100) }}</td>
+      <td class="text-right">{{ "%.1f"|format(item.margin_pct * 100) }}%</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted">Nenhuma venda no período.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if total_rows > items|length %}
+<p class="muted" style="margin-top:8px;">Mostrando {{ items|length }} de {{ total_rows }} itens. Use os filtros ou exporte o CSV para ver tudo.</p>
+{% endif %}
+{% endblock %}

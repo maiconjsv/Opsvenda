@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Venda #{{ sale.id }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Venda #{{ sale.id }}</h1>
+  <div class="btn-group">
+    <a href="{{ url_for('sales.index') }}" class="btn">Voltar</a>
+    {% if sale.status != 'cancelled' %}
+    <form class="inline" method="post" action="{{ url_for('sales.cancel', sale_id=sale.id) }}" data-confirm="Cancelar esta venda e estornar o estoque?">
+      {% include "_csrf_field.html" %}
+      <button type="submit" class="btn btn-danger">Cancelar venda</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <p><strong>Data:</strong> {{ sale.sale_date.strftime('%d/%m/%Y %H:%M') }}</p>
+  <p><strong>Status:</strong> <span class="badge badge-{{ sale.status }}">{{ sale.status }}</span></p>
+  <p><strong>Pedido:</strong> {{ sale.order_number or '-' }}</p>
+  <p><strong>Origem:</strong> {{ sale.source }}</p>
+  <p><strong>Perfil de margem usado:</strong> {{ sale.margin_profile.name if sale.margin_profile else '-' }}</p>
+  {% if sale.notes %}<p><strong>Observações:</strong> {{ sale.notes }}</p>{% endif %}
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>Produto</th><th class="text-right">Qtd</th><th class="text-right">Preço unit.</th><th class="text-right">Bruto</th><th class="text-right">Taxas</th><th class="text-right">Lucro</th><th class="text-right">Margem</th></tr>
+  </thead>
+  <tbody>
+    {% for item in sale.items %}
+    <tr>
+      <td>{{ item.product_sku_snapshot }} — {{ item.product_name_snapshot }}</td>
+      <td class="text-right">{{ item.quantity }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(item.unit_price_snapshot_cents / 100) }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(item.gross_total_cents / 100) }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(item.total_fees_cents / 100) }}</td>
+      <td class="text-right">R$ {{ "%.2f"|format(item.net_profit_cents / 100) }}</td>
+      <td class="text-right">{{ "%.1f"|format(item.margin_pct * 100) }}%</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

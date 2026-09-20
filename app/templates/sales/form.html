@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Nova venda{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Nova venda</h1>
+  <a href="{{ url_for('sales.index') }}" class="btn">Voltar</a>
+</div>
+
+<form class="card" method="post" style="max-width:560px;" id="sale-form">
+  {% include "_csrf_field.html" %}
+  <label>Produto</label>
+  <select name="product_id" id="product_id" required>
+    <option value="">Selecione...</option>
+    {% for p in products %}
+    <option value="{{ p.id }}"
+            data-price="{{ '%.2f'|format(p.current_price) }}"
+            data-cost="{{ '%.2f'|format(p.current_cost) }}"
+            {{ 'selected' if form and form.product_id == p.id|string }}>
+      {{ p.sku }} — {{ p.name }} (estoque: {{ p.stock_qty }})
+    </option>
+    {% endfor %}
+  </select>
+
+  <div class="form-row">
+    <div>
+      <label>Quantidade</label>
+      <input type="number" name="quantity" id="quantity" min="1" value="{{ form.quantity if form else 1 }}" required>
+    </div>
+    <div>
+      <label>Preço unitário nesta venda (R$)</label>
+      <input type="text" inputmode="decimal" name="unit_price" id="unit_price" value="{{ form.unit_price if form else '' }}">
+    </div>
+    <div>
+      <label>Custo unitário nesta venda (R$)</label>
+      <input type="text" inputmode="decimal" name="unit_cost" id="unit_cost" value="{{ form.unit_cost if form else '' }}">
+    </div>
+  </div>
+  <p class="muted">Se deixar em branco, preço e custo atuais do produto são usados. Esses valores ficam gravados nesta venda e não mudam se você editar o produto depois.</p>
+
+  <label>Perfil de margem/taxas</label>
+  <select name="margin_profile_id" required>
+    <option value="">Selecione...</option>
+    {% for m in profiles %}
+    <option value="{{ m.id }}" {{ 'selected' if form and form.margin_profile_id == m.id|string }}>{{ m.name }}</option>
+    {% endfor %}
+  </select>
+  {% if not profiles %}
+  <p class="muted">Nenhum perfil de margem cadastrado ainda. <a href="{{ url_for('margin_profiles.create') }}">Criar um perfil</a>.</p>
+  {% endif %}
+
+  <label>Número do pedido (opcional)</label>
+  <input type="text" name="order_number" value="{{ form.order_number if form else '' }}">
+
+  <label>Observações</label>
+  <textarea name="notes" rows="2">{{ form.notes if form else '' }}</textarea>
+
+  <button type="submit" class="btn btn-primary" style="margin-top:14px;">Registrar venda</button>
+</form>
+
+<script>
+  document.getElementById('product_id').addEventListener('change', function () {
+    const opt = this.selectedOptions[0];
+    if (!opt || !opt.dataset.price) return;
+    const priceField = document.getElementById('unit_price');
+    const costField = document.getElementById('unit_cost');
+    if (!priceField.value) priceField.value = opt.dataset.price;
+    if (!costField.value) costField.value = opt.dataset.cost;
+  });
+</script>
+{% endblock %}
