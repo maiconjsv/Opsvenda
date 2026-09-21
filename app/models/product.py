@@ -7,7 +7,7 @@ class Product(db.Model):
     __tablename__ = "products"
 
     id = db.Column(db.Integer, primary_key=True)
-    sku = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    sku = db.Column(db.String(64), unique=True, nullable=True, index=True)
     name = db.Column(db.String(200), nullable=False)
     current_price_cents = db.Column(db.Integer, nullable=False, default=0)
     current_cost_cents = db.Column(db.Integer, nullable=False, default=0)

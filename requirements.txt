@@ -1,7 +1,5 @@
-Flask==3.0.3
-Flask-SQLAlchemy==3.1.1
-Flask-Migrate==4.0.7
-Flask-Login==0.6.3
-Flask-WTF==1.2.1
-python-dotenv==1.0.1
+# Dependências do backend no modo Docker/produção (Dockerfile faz `pip
+# install -r requirements.txt`). Para o launcher desktop standalone, veja
+# requirements-desktop.txt.
+-r requirements-core.txt
 gunicorn==22.0.0

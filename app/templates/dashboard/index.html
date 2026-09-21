@@ -67,7 +67,7 @@
     {% for item in items %}
     <tr>
       <td>{{ item.sale.sale_date.strftime('%d/%m/%Y') }}</td>
-      <td>{{ item.product_sku_snapshot }} — {{ item.product_name_snapshot }}</td>
+      <td>{{ (item.product_sku_snapshot + ' — ') if item.product_sku_snapshot else '' }}{{ item.product_name_snapshot }}</td>
       <td class="text-right">{{ item.quantity }}</td>
       <td class="text-right">R$ {{ "%.2f"|format(item.gross_total_cents / 100) }}</td>
       <td class="text-right">R$ {{ "%.2f"|format(item.net_profit_cents / 100) }}</td>

@@ -2,7 +2,7 @@ import os
 
 from flask import Flask, jsonify
 
-from app.config import Config
+from app.config import Config, load_or_create_secret_key
 from app.extensions import csrf, db, login_manager, migrate
 
 
@@ -12,6 +12,9 @@ def create_app(config_object=Config):
 
     os.makedirs(app.config["INSTANCE_DIR"], exist_ok=True)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+    if not app.config.get("SECRET_KEY"):
+        app.config["SECRET_KEY"] = load_or_create_secret_key(app.config["INSTANCE_DIR"])
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -29,12 +32,14 @@ def create_app(config_object=Config):
     from app.blueprints.margin_profiles import bp as margin_profiles_bp
     from app.blueprints.products import bp as products_bp
     from app.blueprints.sales import bp as sales_bp
+    from app.blueprints.setup import bp as setup_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(products_bp)
     app.register_blueprint(margin_profiles_bp)
     app.register_blueprint(sales_bp)
+    app.register_blueprint(setup_bp)
 
     @app.get("/health")
     def health():
@@ -46,5 +51,10 @@ def create_app(config_object=Config):
 
     with app.app_context():
         db.create_all()
+
+        if not app.config.get("TESTING"):
+            from app.services.backup import create_backup
+
+            create_backup(app.config["INSTANCE_DIR"])
 
     return app

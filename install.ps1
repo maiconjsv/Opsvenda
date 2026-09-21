@@ -15,13 +15,7 @@ if (-not (Test-Path ".env")) {
     Copy-Item ".env.example" ".env"
 
     $secret = -join ((48..57) + (97..102) | Get-Random -Count 48 | ForEach-Object {[char]$_})
-    (Get-Content ".env") -replace '^SECRET_KEY=.*', "SECRET_KEY=$secret" | Set-Content ".env"
-
-    $securePassword = Read-Host "Defina a senha do usuario administrador (usuario: admin)" -AsSecureString
-    $adminPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($securePassword)
-    )
-    (Get-Content ".env") -replace '^ADMIN_PASSWORD=.*', "ADMIN_PASSWORD=$adminPassword" | Set-Content ".env"
+    Add-Content ".env" "SECRET_KEY=$secret"
 }
 
 Write-Host "Subindo o backend com Docker Compose..."
@@ -47,7 +41,7 @@ if (-not (Test-Path ".venv-desktop")) {
 $WshShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut("$Home\Desktop\OpsVenda.lnk")
 $Shortcut.TargetPath = "$ScriptDir\.venv-desktop\Scripts\pythonw.exe"
-$Shortcut.Arguments = "`"$ScriptDir\run_desktop.py`""
+$Shortcut.Arguments = "`"$ScriptDir\run_desktop.py`" --url http://localhost:$port"
 $Shortcut.WorkingDirectory = $ScriptDir
 $Shortcut.Save()
 

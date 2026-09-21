@@ -10,8 +10,8 @@
   {% include "_csrf_field.html" %}
   <div class="form-row">
     <div>
-      <label>SKU</label>
-      <input type="text" name="sku" value="{{ (form.sku if form else product.sku) or '' }}" required>
+      <label>SKU (opcional)</label>
+      <input type="text" name="sku" value="{{ (form.sku if form else product.sku) or '' }}">
     </div>
   </div>
   <label>Nome</label>

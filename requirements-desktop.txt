@@ -1,2 +1,7 @@
-pywebview==5.2
+# Dependências do launcher desktop standalone (run_desktop.py): sobe o
+# backend Flask in-process (waitress) e abre a janela nativa (pywebview).
+-r requirements-core.txt
+waitress==3.0.2
 requests==2.32.3
+pywebview==5.2 ; sys_platform == "win32"
+pywebview[qt6]==5.2 ; sys_platform != "win32"

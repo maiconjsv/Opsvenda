@@ -16,7 +16,7 @@
             data-price="{{ '%.2f'|format(p.current_price) }}"
             data-cost="{{ '%.2f'|format(p.current_cost) }}"
             {{ 'selected' if form and form.product_id == p.id|string }}>
-      {{ p.sku }} — {{ p.name }} (estoque: {{ p.stock_qty }})
+      {{ (p.sku + ' — ') if p.sku else '' }}{{ p.name }} (estoque: {{ p.stock_qty }})
     </option>
     {% endfor %}
   </select>

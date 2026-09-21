@@ -36,7 +36,7 @@ def create():
             return render_template("products/form.html", product=None, form=request.form)
 
         product = Product(
-            sku=request.form["sku"].strip(),
+            sku=request.form["sku"].strip() or None,
             name=request.form["name"].strip(),
             current_price_cents=to_cents(request.form["price"]),
             current_cost_cents=to_cents(request.form.get("cost") or 0),
@@ -71,7 +71,7 @@ def edit(product_id):
             flash(error, "danger")
             return render_template("products/form.html", product=product, form=request.form)
 
-        product.sku = request.form["sku"].strip()
+        product.sku = request.form["sku"].strip() or None
         product.name = request.form["name"].strip()
         product.current_price_cents = to_cents(request.form["price"])
         product.current_cost_cents = to_cents(request.form.get("cost") or 0)
@@ -131,8 +131,8 @@ def _validate_product_form(form, current_sku=None):
     name = form.get("name", "").strip()
     price = form.get("price", "").strip()
 
-    if not sku or not name or not price:
-        return "SKU, nome e preço são obrigatórios."
+    if not name or not price:
+        return "Nome e preço são obrigatórios."
 
     try:
         to_cents(price)
@@ -146,7 +146,7 @@ def _validate_product_form(form, current_sku=None):
         except ValueError:
             return "Custo inválido."
 
-    if sku != current_sku:
+    if sku and sku != current_sku:
         existing = Product.query.filter_by(sku=sku).first()
         if existing:
             return f"Já existe um produto com o SKU '{sku}'."

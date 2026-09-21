@@ -15,6 +15,7 @@
       <a href="{{ url_for('products.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('products.') }}">Produtos</a>
       <a href="{{ url_for('sales.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('sales.') }}">Vendas</a>
       <a href="{{ url_for('margin_profiles.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('margin_profiles.') }}">Perfis de Margem</a>
+      <a href="{{ url_for('dashboard.backup') }}">Baixar backup</a>
       <div class="sidebar-footer">
         <span>{{ current_user.username }}</span>
         <a href="{{ url_for('auth.logout') }}">Sair</a>
