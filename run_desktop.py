@@ -22,7 +22,7 @@ from pathlib import Path
 # The Windows embeddable Python distribution uses a `._pth` file that fully
 # replaces sys.path -- unlike a normal install, it does NOT automatically add
 # the launched script's own directory. Without this, `from app import
-# create_app` below fails to find the sibling `app/` package when run from
+# create_app` below fails to find the sibling `app.py` module when run from
 # the packaged bundle (python.exe/pythonw.exe run_desktop.py).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 

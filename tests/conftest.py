@@ -1,8 +1,10 @@
 import pytest
 
 from app import create_app
-from app.config import Config
-from app.extensions import db as _db
+from config import Config
+from extensions import db as _db
+from models import Company
+from services.billing import trial_expiry
 
 
 @pytest.fixture()
@@ -29,3 +31,16 @@ def db(app):
 @pytest.fixture()
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture()
+def company(db):
+    c = Company(name="Empresa Teste", access_until=trial_expiry())
+    db.session.add(c)
+    db.session.commit()
+    return c
+
+
+@pytest.fixture()
+def multi_tenant(monkeypatch):
+    monkeypatch.setenv("OPSVENDA_MULTI_TENANT", "1")

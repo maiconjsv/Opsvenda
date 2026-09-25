@@ -1,6 +1,6 @@
 import sqlite3
 
-from app.services.backup import create_backup
+from services.backup import create_backup
 
 
 def test_create_backup_returns_none_without_database(tmp_path):

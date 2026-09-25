@@ -37,7 +37,17 @@ Write-Host "Instalando dependências do app..."
 & "$PyDir\python.exe" -m pip install --no-warn-script-location -r (Join-Path $RepoRoot "requirements-desktop.txt")
 
 Write-Host "Copiando código da aplicação..."
-Copy-Item (Join-Path $RepoRoot "app") -Destination $RuntimeDir -Recurse -Force
+Copy-Item (Join-Path $RepoRoot "models") -Destination $RuntimeDir -Recurse -Force
+Copy-Item (Join-Path $RepoRoot "routes") -Destination $RuntimeDir -Recurse -Force
+Copy-Item (Join-Path $RepoRoot "services") -Destination $RuntimeDir -Recurse -Force
+Copy-Item (Join-Path $RepoRoot "templates") -Destination $RuntimeDir -Recurse -Force
+Copy-Item (Join-Path $RepoRoot "static") -Destination $RuntimeDir -Recurse -Force
+Copy-Item (Join-Path $RepoRoot "migrations") -Destination $RuntimeDir -Recurse -Force
+Copy-Item (Join-Path $RepoRoot "app.py") -Destination $RuntimeDir -Force
+Copy-Item (Join-Path $RepoRoot "config.py") -Destination $RuntimeDir -Force
+Copy-Item (Join-Path $RepoRoot "extensions.py") -Destination $RuntimeDir -Force
+Copy-Item (Join-Path $RepoRoot "scoping.py") -Destination $RuntimeDir -Force
+Copy-Item (Join-Path $RepoRoot "cli.py") -Destination $RuntimeDir -Force
 Copy-Item (Join-Path $RepoRoot "wsgi.py") -Destination $RuntimeDir -Force
 Copy-Item (Join-Path $RepoRoot "run_desktop.py") -Destination $RuntimeDir -Force
 Copy-Item (Join-Path $PSScriptRoot "templates\install-windows.ps1") -Destination $RuntimeDir -Force

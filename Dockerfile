@@ -9,7 +9,18 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app ./app
+COPY models ./models
+COPY routes ./routes
+COPY services ./services
+COPY templates ./templates
+COPY static ./static
+COPY migrations ./migrations
+COPY app.py .
+COPY config.py .
+COPY extensions.py .
+COPY scoping.py .
+COPY cli.py .
+COPY VERSION .
 COPY wsgi.py .
 COPY docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh

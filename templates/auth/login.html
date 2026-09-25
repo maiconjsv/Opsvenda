@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="OpsVenda é o sistema online de controle de vendas para quem vende em qualquer marketplace: cadastre as taxas de cada plataforma (Shopee, Mercado Livre, Amazon...), controle todos os custos e veja o lucro real de cada venda. Grátis por 3 meses.">
+<meta name="keywords" content="controle de vendas marketplace, sistema multiplataforma vendedor, calcular lucro Shopee Mercado Livre Amazon, controle de custos vendedor online, taxa de plataforma, planilha de vendas marketplace, sistema para pequeno vendedor, gestão de vendas online">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#2563eb">
+
+<meta property="og:title" content="OpsVenda — Vendas, taxas e custos de qualquer plataforma, num só lugar">
+<meta property="og:description" content="Cadastre as taxas de cada marketplace que você usa, controle todos os custos e veja o lucro real de cada venda automaticamente. Grátis por 3 meses.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:url" content="{{ request.url }}">
+<link rel="canonical" href="{{ request.url_root }}">
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+<title>OpsVenda — Controle de vendas em qualquer marketplace | Grátis por 3 meses</title>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "OpsVenda",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web, Android",
+  "description": "Sistema simples de controle de vendas, taxas e custos para pequenos vendedores em qualquer marketplace - Shopee, Mercado Livre, Amazon ou loja própria. Acesse pelo celular ou computador.",
+  "url": "{{ request.url_root }}",
+  "offers": {
+    "@type": "Offer",
+    "name": "3 meses grátis, depois R$ 4,99/mês",
+    "priceCurrency": "BRL",
+    "price": "4.99"
+  }
+}
+</script>
+</head>
+<body>
+
+<header class="navbar">
+  <a href="{{ url_for('auth.login') }}" class="nav-logo">Ops<span class="dot">Venda</span></a>
+  <nav class="nav-links">
+    <a href="#sobre">Sobre</a>
+    <a href="#funcionalidades">Funcionalidades</a>
+    <a href="#planos">Planos</a>
+  </nav>
+  <div class="nav-cta">
+    {% if show_login %}<a href="#entrar" class="btn-ghost js-tab-link" data-target="login-form">Entrar</a>{% endif %}
+    {% if show_signup %}<a href="#entrar" class="btn-solid js-tab-link" data-target="signup-form">Criar conta grátis</a>{% endif %}
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="hero-tag">100% online — acesse pelo celular ou computador</span>
+      <h1>Controle vendas, taxas e custos de todas as suas plataformas — num só lugar.</h1>
+      <p class="hero-sub">
+        Chega de descobrir o resultado do mês no "olhômetro". Você mesmo cadastra a
+        taxa de cada plataforma que usa — Shopee, Mercado Livre, Amazon, loja
+        própria, o que for — e o OpsVenda calcula sozinho o lucro líquido de cada
+        venda e do seu negócio inteiro, em tempo real.
+      </p>
+      <ul class="hero-checklist">
+        <li><span class="dot-check">✓</span> Cadastre a taxa de qualquer plataforma: Shopee, Mercado Livre, Amazon...</li>
+        <li><span class="dot-check">✓</span> Controle todos os custos: produto, frete, embalagem e taxas fixas</li>
+        <li><span class="dot-check">✓</span> Dashboard mostra se está tendo lucro ou prejuízo, em qualquer canal</li>
+        <li><span class="dot-check">✓</span> Acesse de qualquer lugar, pelo navegador do celular ou do computador</li>
+      </ul>
+      <div class="hero-actions">
+        {% if show_login %}<a href="#entrar" class="btn-outline btn-lg js-tab-link" data-target="login-form">Já tenho conta</a>{% endif %}
+        {% if show_signup %}<a href="#entrar" class="btn-solid btn-lg js-tab-link" data-target="signup-form">Criar conta grátis</a>{% endif %}
+      </div>
+    </div>
+
+    <div id="entrar">
+      <div class="login-card">
+        <div class="login-card-head">
+          <h2>OpsVenda</h2>
+          <p id="auth-card-subtitle">{% if active_tab == 'signup' %}Crie a conta da sua empresa{% else %}Acesse sua conta{% endif %}</p>
+        </div>
+
+        {% if show_login and show_signup %}
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab{{ ' active' if active_tab == 'login' else '' }}" data-target="login-form">Entrar</button>
+          <button type="button" class="auth-tab{{ ' active' if active_tab == 'signup' else '' }}" data-target="signup-form">Criar conta</button>
+        </div>
+        {% endif %}
+
+        {% if show_login %}
+        <form method="post" action="{{ url_for('auth.login') }}" id="login-form" class="auth-form{{ '' if active_tab == 'login' else ' auth-form-hidden' }}">
+          {% include "_csrf_field.html" %}
+          <label>Usuário</label>
+          <input type="text" name="username" value="{{ login_username or '' }}" required>
+          <label>Senha</label>
+          <input type="password" name="password" required>
+          <button type="submit">Entrar</button>
+        </form>
+        {% endif %}
+
+        {% if show_signup %}
+        <form method="post" action="{{ url_for('auth.signup') }}" id="signup-form" class="auth-form{{ '' if active_tab == 'signup' else ' auth-form-hidden' }}">
+          {% include "_csrf_field.html" %}
+          <label>Nome da empresa</label>
+          <input type="text" name="company_name" value="{{ signup_company_name or '' }}" required>
+          <label>Usuário</label>
+          <input type="text" name="username" value="{{ signup_username or '' }}" required>
+          <label>Senha</label>
+          <input type="password" name="password" minlength="6" required>
+          <label>Confirmar senha</label>
+          <input type="password" name="confirm_password" minlength="6" required>
+          <label>Pergunta de segurança</label>
+          <select name="security_question" required>
+            <option value="">Selecione...</option>
+            {% for q in questions %}
+            <option value="{{ q }}" {{ 'selected' if signup_security_question == q else '' }}>{{ q }}</option>
+            {% endfor %}
+          </select>
+          <p class="field-hint">Usada pra recuperar o acesso se esquecer a senha — guarde a resposta.</p>
+          <label>Resposta</label>
+          <input type="text" name="security_answer" required>
+          <button type="submit">{{ 'Criar conta' if show_login else 'Criar conta e entrar' }}</button>
+        </form>
+        {% endif %}
+
+        {% include "_flash.html" %}
+
+        {% if show_login %}
+        <a href="{{ url_for('auth.recover') }}" class="recover-link">Esqueci minha senha</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="sobre" id="sobre">
+    <div class="section-inner">
+      <span class="section-tag">Sobre o sistema</span>
+      <h2>Feito pra quem vende sozinho ou com uma equipe pequena, em qualquer plataforma</h2>
+      <p>
+        Ferramentas de gestão para e-commerce em geral são pensadas pra operações
+        grandes, com várias lojas e canais integrados — e custam caro pra quem
+        está começando. O <strong>OpsVenda</strong> é o oposto: um sistema enxuto,
+        pensado pra quem vende como pessoa física ou MEI em um ou vários
+        marketplaces ao mesmo tempo — Shopee, Mercado Livre, Amazon, Shein, loja
+        própria — e só quer saber, com clareza, se o negócio está dando lucro.
+      </p>
+      <p>
+        Sem integração automática com nenhuma plataforma: você mesmo cadastra a
+        taxa de cada canal de venda que usa e o custo de cada produto, o sistema
+        aplica isso automaticamente em toda venda registrada (manual ou
+        importada) e mostra a margem real — a mesma conta que hoje é feita (ou
+        esquecida) numa planilha, não importa a plataforma.
+      </p>
+      <div class="sobre-stats">
+        <div class="sobre-stat"><strong>3 meses</strong><span>Grátis pra testar, sem cartão</span></div>
+        <div class="sobre-stat"><strong>0</strong><span>Planilhas necessárias</span></div>
+        <div class="sobre-stat"><strong>1 min</strong><span>Pra registrar uma venda</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="funcionalidades">
+    <div class="section-inner">
+      <span class="section-tag">Funcionalidades</span>
+      <h2>Tudo que um pequeno vendedor precisa pra controlar o negócio, em qualquer plataforma</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="icon">R$</div>
+          <h3>Taxas de qualquer plataforma</h3>
+          <p>Cadastre a taxa de cada marketplace que você vende — Shopee, Mercado Livre, Amazon, loja própria — e o sistema calcula o lucro líquido de cada venda sozinho.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">%</div>
+          <h3>Controle total de custos</h3>
+          <p>Produto, frete, embalagem, taxa fixa por pedido, taxa variável: cadastre todos os custos que pesam numa venda e nunca mais deixe nenhum de fora da conta.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">▤</div>
+          <h3>Dashboard de lucro e prejuízo</h3>
+          <p>Veja o resultado do período somando todas as suas plataformas, compare com o mês anterior e descubra na hora se algum produto está sendo vendido no prejuízo.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">▦</div>
+          <h3>Controle de estoque</h3>
+          <p>Cada venda já baixa o estoque automaticamente, com histórico de entradas, ajustes e devoluções por produto — não importa em qual canal foi vendido.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⇅</div>
+          <h3>Importação de pedidos</h3>
+          <p>Suba o extrato de pedidos de qualquer marketplace em CSV e o sistema registra as vendas em lote, mapeando as colunas do jeito que vierem.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⎘</div>
+          <h3>Backup automático</h3>
+          <p>Uma cópia do seu banco de dados é guardada a cada abertura do sistema — seu histórico de vendas nunca fica exposto a perder.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="planos" id="planos">
+    <div class="section-inner" style="text-align:center;">
+      <span class="section-tag">Sem pegadinha</span>
+      <h2 style="margin-left:auto; margin-right:auto;">Comece de graça, sem cartão de crédito</h2>
+      <div class="pricing-card">
+        <span class="pricing-badge">Oferta de lançamento</span>
+        <p class="pricing-value">Grátis<span>por 3 meses</span></p>
+        <p class="pricing-fine-print">Depois, R$ 4,99/mês via Pix. Cancele quando quiser, sem multa e sem fidelidade.</p>
+        {% if show_signup %}
+        <a href="#entrar" class="btn-solid btn-lg js-tab-link" data-target="signup-form">Criar conta grátis</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-final">
+    <div class="section-inner">
+      <h2>Pare de adivinhar se está tendo lucro.</h2>
+      <p>Registre sua primeira venda e veja o resultado calculado na hora.</p>
+      <a href="#entrar" class="btn-solid btn-lg">Acessar o sistema</a>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <span class="footer-brand">OpsVenda</span>
+    <span class="footer-copy">Controle de vendas, taxas e custos para pequenos vendedores, em qualquer plataforma. App Android em breve.</span>
+  </div>
+</footer>
+
+<script>
+  function opsvendaShowTab(target) {
+    document.querySelectorAll('.auth-form').forEach(function (f) {
+      f.classList.toggle('auth-form-hidden', f.id !== target);
+    });
+    document.querySelectorAll('.auth-tab').forEach(function (t) {
+      t.classList.toggle('active', t.dataset.target === target);
+    });
+    var subtitle = document.getElementById('auth-card-subtitle');
+    if (subtitle) {
+      subtitle.textContent = target === 'signup-form' ? 'Crie a conta da sua empresa' : 'Acesse sua conta';
+    }
+    var visible = document.getElementById(target);
+    if (visible) {
+      var firstInput = visible.querySelector('input');
+      if (firstInput) firstInput.focus();
+    }
+  }
+  document.querySelectorAll('.auth-tab, .js-tab-link').forEach(function (el) {
+    el.addEventListener('click', function () { opsvendaShowTab(el.dataset.target); });
+  });
+</script>
+
+</body>
+</html>

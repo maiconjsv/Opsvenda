@@ -4,8 +4,8 @@ Sistema de gestão de vendas (Shopee) construído em Flask, com autenticação,
 cadastro de produtos, perfis de margem, vendas e importação/exportação de CSV.
 
 Este guia cobre como colocar o ambiente de **desenvolvimento** para rodar no
-Windows e no Linux. Para saber como o projeto é organizado (blueprints,
-models, services), veja os comentários em [app/\_\_init\_\_.py](app/__init__.py).
+Windows e no Linux. Para saber como o projeto é organizado (routes, models,
+services), veja os comentários em [app.py](app.py).
 
 ## Pré-requisitos
 
@@ -41,9 +41,9 @@ flask run
 ```
 
 Acesse `http://127.0.0.1:5000`. Como ainda não existe nenhum usuário
-cadastrado (banco sqlite local em `instance/app.db`), você é redirecionado
-automaticamente para a tela de configuração inicial (`/setup`), onde cria o
-usuário administrador pelo navegador.
+cadastrado (banco sqlite local em `instance/app.db`), a própria página de
+login mostra o formulário de criar conta em vez do de entrar — é por ali
+que você cria o usuário administrador.
 
 Nas próximas vezes, só é preciso repetir os passos 1 (ativar) e 4 (subir);
 `.venv` e o banco já ficam prontos.
@@ -69,9 +69,8 @@ flask run
 ```
 
 Acesse `http://127.0.0.1:5000`. Como ainda não existe nenhum usuário
-cadastrado, você é redirecionado automaticamente para a tela de
-configuração inicial (`/setup`), onde cria o usuário administrador pelo
-navegador.
+cadastrado, a própria página de login mostra o formulário de criar conta em
+vez do de entrar — é por ali que você cria o usuário administrador.
 
 ## Rodando os testes
 
@@ -83,7 +82,7 @@ pytest
 
 ## Comandos úteis do Flask CLI
 
-Definidos em [app/cli.py](app/cli.py):
+Definidos em [cli.py](cli.py):
 
 ```bash
 flask create-admin       # cria ou troca a senha de um usuário específico (pede username/senha via prompt) - útil para recuperar acesso
@@ -102,7 +101,8 @@ docker compose up -d --build
 
 Isso sobe em `http://localhost:5000` (ou a porta definida em `APP_PORT` no
 `.env`) dentro de um container, usando Gunicorn como servidor WSGI. No
-primeiro acesso, a tela `/setup` pede pra criar o usuário administrador.
+primeiro acesso, a própria página de login pede pra criar o usuário
+administrador.
 
 Também existem instaladores automatizados que fazem esse passo a passo do
 Docker e ainda criam um atalho para o launcher desktop
@@ -159,16 +159,17 @@ configuração inicial para criar o usuário administrador.
 ## Estrutura do projeto
 
 ```
-app/
-  __init__.py       # application factory: cria o Flask app e registra tudo
-  config.py         # configurações (banco, chaves, uploads)
-  cli.py            # comandos flask CLI (create-admin)
-  extensions.py     # instâncias das extensões (db, login_manager, csrf, migrate)
-  blueprints/        # rotas HTTP, uma pasta por domínio (auth, setup, sales, products, ...)
-  models/           # tabelas do banco (SQLAlchemy)
-  services/         # regras de negócio (pricing, import/export de CSV)
-  templates/        # HTML (Jinja2)
-  static/           # CSS/JS
+app.py              # application factory: cria o Flask app e registra tudo
+config.py           # configurações (banco, chaves, uploads)
+cli.py              # comandos flask CLI (create-admin)
+extensions.py       # instâncias das extensões (db, login_manager, csrf, migrate)
+scoping.py          # isolamento multi-tenant (toda query/lookup por empresa passa por aqui)
+routes/             # rotas HTTP, um arquivo por domínio (auth, sales, products, ...)
+models/             # tabelas do banco (SQLAlchemy)
+services/           # regras de negócio (pricing, import/export de CSV, telemetria, backup)
+templates/          # HTML (Jinja2)
+static/             # CSS/JS
+migrations/         # migrations Alembic (schema do banco)
 wsgi.py             # ponto de entrada WSGI (usado por `flask run` e pelo Gunicorn)
 run_desktop.py      # launcher desktop (pywebview) - sobe o backend embutido ou aponta pra um já rodando (--url)
 packaging/          # scripts de build dos pacotes standalone (Windows/Linux) e seus instaladores

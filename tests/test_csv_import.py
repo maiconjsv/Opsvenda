@@ -3,8 +3,8 @@ from pathlib import Path
 
 from werkzeug.datastructures import FileStorage
 
-from app.models import MarginProfile, Product
-from app.services import csv_import
+from models import MarginProfile, Product
+from services import csv_import
 
 FIXTURE = Path(__file__).parent / "fixtures" / "shopee_orders_sample.csv"
 
@@ -23,9 +23,12 @@ def test_save_upload_returns_header_and_preview(tmp_path):
     assert preview_rows[0]["SKU"] == "ABC123"
 
 
-def test_run_import_matches_existing_product_and_creates_missing(db, tmp_path):
-    existing = Product(sku="ABC123", name="Camiseta Azul", current_price_cents=2500, current_cost_cents=1000, stock_qty=100)
-    profile = MarginProfile(name="Shopee Padrao", platform_fee_pct=0.10)
+def test_run_import_matches_existing_product_and_creates_missing(db, tmp_path, company):
+    existing = Product(
+        company_id=company.id, sku="ABC123", name="Camiseta Azul",
+        current_price_cents=2500, current_cost_cents=1000, stock_qty=100,
+    )
+    profile = MarginProfile(company_id=company.id, name="Shopee Padrao", platform_fee_pct=0.10)
     db.session.add_all([existing, profile])
     db.session.commit()
 
@@ -46,6 +49,7 @@ def test_run_import_matches_existing_product_and_creates_missing(db, tmp_path):
         column_mapping=mapping,
         margin_profile_id=profile.id,
         create_missing_products=True,
+        company_id=company.id,
     )
 
     # Row 1 (ABC123) matches existing product -> sale created.
@@ -60,8 +64,8 @@ def test_run_import_matches_existing_product_and_creates_missing(db, tmp_path):
     assert existing.stock_qty == 98  # 100 - 2 units sold in row 1
 
 
-def test_run_import_skips_unknown_sku_when_not_creating(db, tmp_path):
-    profile = MarginProfile(name="Shopee Padrao", platform_fee_pct=0.10)
+def test_run_import_skips_unknown_sku_when_not_creating(db, tmp_path, company):
+    profile = MarginProfile(company_id=company.id, name="Shopee Padrao", platform_fee_pct=0.10)
     db.session.add(profile)
     db.session.commit()
 
@@ -79,6 +83,7 @@ def test_run_import_skips_unknown_sku_when_not_creating(db, tmp_path):
         column_mapping=mapping,
         margin_profile_id=profile.id,
         create_missing_products=False,
+        company_id=company.id,
     )
 
     assert result.sales_created == 0

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Assinatura{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Assinatura</h1>
+</div>
+
+<div class="card result-banner {{ 'negative' if blocked else 'positive' }}">
+  <div class="headline {{ 'text-danger' if blocked else 'text-success' }}">
+    {% if blocked %}
+      Seu acesso expirou
+    {% elif days_remaining >= 0 %}
+      {{ days_remaining }} dia(s) restante(s)
+    {% else %}
+      Vencido há {{ -days_remaining }} dia(s) - pague agora para não perder o acesso
+    {% endif %}
+  </div>
+  <p class="muted" style="margin-top:8px;">
+    Válido até {{ company.access_until.strftime('%d/%m/%Y') }}.
+    {% if blocked %}Gere uma cobrança Pix abaixo para reativar o acesso.{% endif %}
+  </p>
+</div>
+
+{% if pending_payment %}
+<div class="card" id="pending-payment" data-payment-id="{{ pending_payment.id }}">
+  <h2>Cobrança pendente</h2>
+  <p class="muted">R$ {{ "%.2f"|format(pending_payment.amount_cents / 100) }} via Pix</p>
+  {% if pending_payment.qr_code_image %}
+  <img src="{{ pending_payment.qr_code_image }}" alt="QR Code Pix" style="width:220px; height:220px; margin:14px 0;">
+  {% endif %}
+  {% if pending_payment.qr_code_text %}
+  <label>Pix copia e cola</label>
+  <textarea readonly rows="3" onclick="this.select()">{{ pending_payment.qr_code_text }}</textarea>
+  {% endif %}
+  <p class="muted" id="pending-payment-status" style="margin-top:10px;">Aguardando confirmação do pagamento...</p>
+</div>
+<script>
+(function () {
+  var el = document.getElementById('pending-payment');
+  var paymentId = el.dataset.paymentId;
+  var statusEl = document.getElementById('pending-payment-status');
+  function check() {
+    fetch('/assinatura/verificar/' + paymentId)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.paid) {
+          statusEl.textContent = 'Pagamento confirmado! Atualizando...';
+          window.location.reload();
+        }
+      });
+  }
+  setInterval(check, 5000);
+})();
+</script>
+{% else %}
+<div class="card">
+  <h2>Renovar assinatura</h2>
+  <p class="muted">R$ {{ "%.2f"|format(price_reais) }}/mês via Pix.</p>
+  <form method="post" action="{{ url_for('billing.create_charge') }}">
+    {% include "_csrf_field.html" %}
+    <button type="submit" class="btn btn-primary" style="margin-top:10px;">Gerar cobrança Pix</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Histórico de pagamentos</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Data</th><th class="text-right">Valor</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td>{{ p.created_at.strftime('%d/%m/%Y %H:%M') if p.created_at else '-' }}</td>
+          <td class="text-right">R$ {{ "%.2f"|format(p.amount_cents / 100) }}</td>
+          <td>
+            {% if p.status == 'paid' %}
+              <span class="badge badge-completed">pago</span>
+            {% else %}
+              <span class="badge badge-pending">pendente</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="muted">Nenhum pagamento ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
