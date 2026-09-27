@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from app import create_app
@@ -12,7 +14,9 @@ def app(tmp_path):
     class TestConfig(Config):
         TESTING = True
         SECRET_KEY = "test"
-        SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+        SQLALCHEMY_DATABASE_URI = os.environ.get(
+            "TEST_DATABASE_URL", "postgresql+psycopg://opsvenda:opsvenda@localhost:5432/opsvenda_test"
+        )
         WTF_CSRF_ENABLED = False
         INSTANCE_DIR = str(tmp_path)
         UPLOAD_FOLDER = str(tmp_path / "uploads")
@@ -22,6 +26,7 @@ def app(tmp_path):
         yield application
         _db.session.remove()
         _db.drop_all()
+        _db.engine.dispose()
 
 
 @pytest.fixture()

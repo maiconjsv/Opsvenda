@@ -10,7 +10,17 @@ empresa só enxerga os próprios dados — o isolamento fica em
 
 - Python 3.12+
 - Git
-- Docker (apenas para rodar/deployar o modo produção)
+- PostgreSQL 16+ (o projeto usa só Postgres, inclusive em dev e nos testes)
+- Docker (apenas no servidor de produção)
+
+## Banco local (uma vez)
+
+```bash
+sudo apt install postgresql
+sudo -u postgres psql -c "CREATE ROLE opsvenda LOGIN PASSWORD 'opsvenda' CREATEDB;"
+sudo -u postgres createdb -O opsvenda opsvenda        # dev
+sudo -u postgres createdb -O opsvenda opsvenda_test   # testes
+```
 
 ## Desenvolvimento
 
@@ -19,20 +29,22 @@ python3 -m venv .venv
 source .venv/bin/activate          # Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 
-cp .env.example .env               # defina SECRET_KEY
+cp .env.example .env               # defina SECRET_KEY; DATABASE_URL já aponta pro Postgres local
 export FLASK_APP=wsgi:app FLASK_DEBUG=1
 flask db upgrade                   # cria/atualiza o schema
 flask run
 ```
 
 Acesse `http://127.0.0.1:5000` e crie uma conta pela aba "Criar conta".
-Sem `DATABASE_URL`, o banco é um SQLite em `instance/app.db`.
 
 ## Testes
 
 ```bash
 pytest
 ```
+
+Usam o banco `opsvenda_test` (sobrescreva com `TEST_DATABASE_URL`); as
+tabelas são recriadas a cada teste.
 
 ## Comandos úteis do Flask CLI
 

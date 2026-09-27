@@ -28,6 +28,8 @@ def create_app(config_object=Config):
 
     if not app.config.get("SECRET_KEY"):
         raise RuntimeError("SECRET_KEY não definida - configure a variável de ambiente (veja .env.example).")
+    if not app.config.get("SQLALCHEMY_DATABASE_URI"):
+        raise RuntimeError("DATABASE_URL não definida - configure o Postgres (veja .env.example).")
 
     os.makedirs(app.config["INSTANCE_DIR"], exist_ok=True)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
