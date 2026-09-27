@@ -1,9 +1,9 @@
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import csrf, db
 from models import Company, Payment
-from scoping import get_scoped_or_404, is_multi_tenant
+from scoping import get_scoped_or_404
 from services import billing
 
 bp = Blueprint("billing", __name__, url_prefix="/assinatura")
@@ -12,9 +12,6 @@ bp = Blueprint("billing", __name__, url_prefix="/assinatura")
 @bp.route("/")
 @login_required
 def status():
-    if not is_multi_tenant():
-        abort(404)
-
     company = db.session.get(Company, current_user.company_id)
     pending_payment = (
         Payment.query.filter_by(company_id=company.id, status="pending")
@@ -37,9 +34,6 @@ def status():
 @bp.route("/gerar-cobranca", methods=["POST"])
 @login_required
 def create_charge():
-    if not is_multi_tenant():
-        abort(404)
-
     company = db.session.get(Company, current_user.company_id)
     result = billing.create_charge(company)
     if isinstance(result, dict) and "erro" in result:
@@ -50,9 +44,6 @@ def create_charge():
 @bp.route("/verificar/<int:payment_id>")
 @login_required
 def check_status(payment_id):
-    if not is_multi_tenant():
-        abort(404)
-
     payment = get_scoped_or_404(Payment, payment_id)
     paid = billing.poll_and_confirm(payment)
     return jsonify({"paid": paid})

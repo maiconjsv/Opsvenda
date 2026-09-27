@@ -2,8 +2,7 @@
 
 Only one payment provider exists for OpsVenda, so unlike BookCase's PIX
 integration this is plain functions reading MERCADO_PAGO_ACCESS_TOKEN from
-the environment per call (matching services/telemetry.py's style), not a
-provider class/ABC. Every function fails soft - a bad response or network
+the environment per call, not a provider class/ABC. Every function fails soft - a bad response or network
 error never raises, callers check the return value.
 """
 

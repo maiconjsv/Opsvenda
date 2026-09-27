@@ -1,23 +1,15 @@
 """Multi-tenant data isolation.
 
 Every business row (Product, MarginProfile, Sale) belongs to exactly one
-Company. In single-tenant mode (the free desktop app) there's always exactly
-one Company, so this scoping is invisible overhead. In multi-tenant mode
-(hosted SaaS) it's the only thing standing between company A and company B's
-data - every query and by-id lookup must go through here rather than the
+Company. Scoping is the only thing standing between company A and company
+B's data - every query and by-id lookup must go through here rather than the
 raw model, including any new blueprint added later.
 """
-
-import os
 
 from flask import abort
 from flask_login import current_user
 
 from extensions import db
-
-
-def is_multi_tenant() -> bool:
-    return os.environ.get("OPSVENDA_MULTI_TENANT", "0") == "1"
 
 
 def scoped_query(model):

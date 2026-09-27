@@ -1,15 +1,10 @@
-"""Subscription access: trial period, PIX charges, and payment confirmation.
-
-Applies only in multi-tenant (hosted SaaS) mode - the free desktop
-single-tenant tier has no billing at all, see is_access_blocked().
-"""
+"""Subscription access: trial period, PIX charges, and payment confirmation."""
 
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from extensions import db
 from models import Payment
-from scoping import is_multi_tenant
 from services import mercadopago
 
 TRIAL_DAYS = 90
@@ -31,8 +26,6 @@ def trial_expiry() -> datetime:
 
 
 def is_access_blocked(company) -> bool:
-    if not is_multi_tenant():
-        return False
     return _now() > company.access_until + timedelta(days=GRACE_DAYS)
 
 

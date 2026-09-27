@@ -11,6 +11,7 @@ from services.billing import trial_expiry
 def app(tmp_path):
     class TestConfig(Config):
         TESTING = True
+        SECRET_KEY = "test"
         SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
         WTF_CSRF_ENABLED = False
         INSTANCE_DIR = str(tmp_path)
@@ -39,8 +40,3 @@ def company(db):
     db.session.add(c)
     db.session.commit()
     return c
-
-
-@pytest.fixture()
-def multi_tenant(monkeypatch):
-    monkeypatch.setenv("OPSVENDA_MULTI_TENANT", "1")

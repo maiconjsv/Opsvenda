@@ -1,12 +1,11 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, Response, current_app, render_template, request, send_file
+from flask import Blueprint, Response, render_template, request
 from flask_login import current_user, login_required
 
 from models import Product, Sale, SaleItem
 from models.sale import STATUS_CANCELLED
 from scoping import scoped_query
-from services.backup import create_backup
 from services.csv_export import sales_to_csv
 from services.pricing import from_cents
 
@@ -157,17 +156,3 @@ def export_csv():
         headers={"Content-Disposition": "attachment; filename=vendas.csv"},
     )
 
-
-@bp.route("/backup")
-@login_required
-def backup():
-    backup_path = create_backup(current_app.config["INSTANCE_DIR"])
-    if backup_path is None:
-        return Response("Nenhum banco de dados encontrado ainda.", status=404)
-
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    return send_file(
-        backup_path,
-        as_attachment=True,
-        download_name=f"opsvenda_backup_{timestamp}.db",
-    )

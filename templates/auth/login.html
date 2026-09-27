@@ -46,8 +46,8 @@
     <a href="#planos">Planos</a>
   </nav>
   <div class="nav-cta">
-    {% if show_login %}<a href="#entrar" class="btn-ghost js-tab-link" data-target="login-form">Entrar</a>{% endif %}
-    {% if show_signup %}<a href="#entrar" class="btn-solid js-tab-link" data-target="signup-form">Criar conta grátis</a>{% endif %}
+    <a href="#entrar" class="btn-ghost js-tab-link" data-target="login-form">Entrar</a>
+    <a href="#entrar" class="btn-solid js-tab-link" data-target="signup-form">Criar conta grátis</a>
   </div>
 </header>
 
@@ -69,8 +69,8 @@
         <li><span class="dot-check">✓</span> Acesse de qualquer lugar, pelo navegador do celular ou do computador</li>
       </ul>
       <div class="hero-actions">
-        {% if show_login %}<a href="#entrar" class="btn-outline btn-lg js-tab-link" data-target="login-form">Já tenho conta</a>{% endif %}
-        {% if show_signup %}<a href="#entrar" class="btn-solid btn-lg js-tab-link" data-target="signup-form">Criar conta grátis</a>{% endif %}
+        <a href="#entrar" class="btn-outline btn-lg js-tab-link" data-target="login-form">Já tenho conta</a>
+        <a href="#entrar" class="btn-solid btn-lg js-tab-link" data-target="signup-form">Criar conta grátis</a>
       </div>
     </div>
 
@@ -81,14 +81,11 @@
           <p id="auth-card-subtitle">{% if active_tab == 'signup' %}Crie a conta da sua empresa{% else %}Acesse sua conta{% endif %}</p>
         </div>
 
-        {% if show_login and show_signup %}
         <div class="auth-tabs">
           <button type="button" class="auth-tab{{ ' active' if active_tab == 'login' else '' }}" data-target="login-form">Entrar</button>
           <button type="button" class="auth-tab{{ ' active' if active_tab == 'signup' else '' }}" data-target="signup-form">Criar conta</button>
         </div>
-        {% endif %}
 
-        {% if show_login %}
         <form method="post" action="{{ url_for('auth.login') }}" id="login-form" class="auth-form{{ '' if active_tab == 'login' else ' auth-form-hidden' }}">
           {% include "_csrf_field.html" %}
           <label>Usuário</label>
@@ -97,9 +94,7 @@
           <input type="password" name="password" required>
           <button type="submit">Entrar</button>
         </form>
-        {% endif %}
 
-        {% if show_signup %}
         <form method="post" action="{{ url_for('auth.signup') }}" id="signup-form" class="auth-form{{ '' if active_tab == 'signup' else ' auth-form-hidden' }}">
           {% include "_csrf_field.html" %}
           <label>Nome da empresa</label>
@@ -120,15 +115,12 @@
           <p class="field-hint">Usada pra recuperar o acesso se esquecer a senha — guarde a resposta.</p>
           <label>Resposta</label>
           <input type="text" name="security_answer" required>
-          <button type="submit">{{ 'Criar conta' if show_login else 'Criar conta e entrar' }}</button>
+          <button type="submit">Criar conta</button>
         </form>
-        {% endif %}
 
         {% include "_flash.html" %}
 
-        {% if show_login %}
         <a href="{{ url_for('auth.recover') }}" class="recover-link">Esqueci minha senha</a>
-        {% endif %}
       </div>
     </div>
   </section>
@@ -207,9 +199,7 @@
         <span class="pricing-badge">Oferta de lançamento</span>
         <p class="pricing-value">Grátis<span>por 3 meses</span></p>
         <p class="pricing-fine-print">Depois, R$ 4,99/mês via Pix. Cancele quando quiser, sem multa e sem fidelidade.</p>
-        {% if show_signup %}
         <a href="#entrar" class="btn-solid btn-lg js-tab-link" data-target="signup-form">Criar conta grátis</a>
-        {% endif %}
       </div>
     </div>
   </section>

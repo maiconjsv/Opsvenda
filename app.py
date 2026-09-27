@@ -3,10 +3,9 @@ import os
 from flask import Flask, jsonify, redirect, request, url_for
 from flask_login import current_user
 
-from config import Config, load_or_create_secret_key
+from config import Config
 from extensions import csrf, db, login_manager, migrate
-from scoping import is_multi_tenant
-from services import billing, telemetry
+from services import billing
 
 _BLOCKED_ALLOWED_ENDPOINTS = {
     "static",
@@ -23,13 +22,12 @@ _BLOCKED_ALLOWED_ENDPOINTS = {
 def create_app(config_object=Config):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_object)
-    app.jinja_env.globals["is_multi_tenant"] = is_multi_tenant
+
+    if not app.config.get("SECRET_KEY"):
+        raise RuntimeError("SECRET_KEY não definida - configure a variável de ambiente (veja .env.example).")
 
     os.makedirs(app.config["INSTANCE_DIR"], exist_ok=True)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-
-    if not app.config.get("SECRET_KEY"):
-        app.config["SECRET_KEY"] = load_or_create_secret_key(app.config["INSTANCE_DIR"])
 
     db.init_app(app)
     migrate.init_app(app, db, directory=app.config["MIGRATIONS_DIR"])
@@ -62,7 +60,7 @@ def create_app(config_object=Config):
 
     @app.before_request
     def _enforce_billing_gate():
-        if not is_multi_tenant() or not current_user.is_authenticated:
+        if not current_user.is_authenticated:
             return None
         if request.endpoint in _BLOCKED_ALLOWED_ENDPOINTS:
             return None
@@ -71,40 +69,13 @@ def create_app(config_object=Config):
             return redirect(url_for("billing.status"))
         return None
 
-    @app.after_request
-    def _track_feature_usage(response):
-        if (
-            not app.config.get("TESTING")
-            and request.endpoint
-            and request.endpoint != "static"
-            and current_user.is_authenticated
-        ):
-            telemetry.bump(app.config["INSTANCE_DIR"], request.endpoint)
-        return response
-
     import cli
 
     cli.register(app)
 
-    with app.app_context():
-        if app.config.get("TESTING"):
+    if app.config.get("TESTING"):
+        with app.app_context():
             db.create_all()
-        else:
-            from services.backup import create_backup
-            from services.db_bootstrap import ensure_schema
-
-            # Backed up before any schema change is applied, so a failed/
-            # partial migration on some install leaves a pre-migration
-            # snapshot in instance/backups/.
-            create_backup(app.config["INSTANCE_DIR"])
-            ensure_schema(app)
-            telemetry.send_ping_async(app.config["INSTANCE_DIR"], app.config["VERSION"])
 
     return app
 
-
-if __name__ == "__main__":
-    app = create_app()
-    port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
-    app.run(host="0.0.0.0", port=port, debug=debug)

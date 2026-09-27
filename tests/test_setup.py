@@ -1,6 +1,6 @@
 from models import Company, User
 
-BOOTSTRAP_FORM = {
+SIGNUP_FORM = {
     "company_name": "Minha Empresa",
     "username": "admin",
     "password": "123456",
@@ -10,18 +10,17 @@ BOOTSTRAP_FORM = {
 }
 
 
-def test_login_page_shows_only_signup_form_when_no_users(client):
+def test_login_page_shows_both_login_and_signup(client):
     resp = client.get("/auth/login")
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
-    assert 'name="company_name"' in html  # signup form present
-    assert 'name="password"' in html
-    # no separate tab UI - login isn't an option yet, there's no one to log in as
-    assert "auth-tabs" not in html
+    assert 'id="login-form"' in html
+    assert 'name="company_name"' in html
+    assert "auth-tabs" in html
 
 
-def test_bootstrap_creates_company_and_user_and_logs_in(client, db):
-    resp = client.post("/auth/cadastro", data=BOOTSTRAP_FORM)
+def test_signup_creates_company_and_user_and_logs_in(client, db):
+    resp = client.post("/auth/cadastro", data=SIGNUP_FORM)
     assert resp.status_code == 302
     assert resp.headers["Location"] == "/"
 
@@ -39,36 +38,35 @@ def test_bootstrap_creates_company_and_user_and_logs_in(client, db):
     assert dashboard_resp.status_code == 200
 
 
-def test_bootstrap_rejects_mismatched_passwords(client, db):
-    resp = client.post("/auth/cadastro", data={**BOOTSTRAP_FORM, "confirm_password": "abcdef"})
+def test_signup_rejects_mismatched_passwords(client, db):
+    resp = client.post("/auth/cadastro", data={**SIGNUP_FORM, "confirm_password": "abcdef"})
     assert resp.status_code == 400
     assert User.query.first() is None
 
 
-def test_bootstrap_requires_security_question(client, db):
-    resp = client.post("/auth/cadastro", data={**BOOTSTRAP_FORM, "security_question": "", "security_answer": ""})
+def test_signup_requires_security_question(client, db):
+    resp = client.post("/auth/cadastro", data={**SIGNUP_FORM, "security_question": "", "security_answer": ""})
     assert resp.status_code == 400
     assert User.query.first() is None
 
 
-def test_signup_blocked_once_single_tenant_account_exists(client, db, company):
-    user = User(username="admin", company_id=company.id)
-    user.set_password("123456")
-    db.session.add(user)
+def test_signup_allowed_for_additional_companies(client, db, company):
+    existing = User(username="outra", company_id=company.id)
+    existing.set_password("123456")
+    db.session.add(existing)
     db.session.commit()
 
-    resp = client.post("/auth/cadastro", data=BOOTSTRAP_FORM)
-    assert resp.status_code == 404
+    resp = client.post("/auth/cadastro", data=SIGNUP_FORM)
+    assert resp.status_code == 302
+    assert Company.query.count() == 2
 
 
-def test_login_page_shows_only_login_form_once_account_exists(client, db, company):
-    user = User(username="admin", company_id=company.id)
-    user.set_password("123456")
-    db.session.add(user)
+def test_signup_rejects_duplicate_username(client, db, company):
+    existing = User(username="admin", company_id=company.id)
+    existing.set_password("123456")
+    db.session.add(existing)
     db.session.commit()
 
-    resp = client.get("/auth/login")
-    assert resp.status_code == 200
-    html = resp.get_data(as_text=True)
-    assert 'name="company_name"' not in html  # no signup form anymore
-    assert 'name="username"' in html
+    resp = client.post("/auth/cadastro", data=SIGNUP_FORM)
+    assert resp.status_code == 400
+    assert Company.query.count() == 1

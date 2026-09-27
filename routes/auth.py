@@ -1,9 +1,8 @@
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 
 from extensions import db
 from models import Company, User
-from scoping import is_multi_tenant
 from services import billing
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -17,39 +16,13 @@ SECURITY_QUESTIONS = [
 ]
 
 
-def _needs_bootstrap() -> bool:
-    """True when this is a single-tenant install with no account yet - the
-    one-time "create the only account" case that used to live at /setup.
-    """
-    return not is_multi_tenant() and User.query.first() is None
-
-
-def _auth_tabs(active_tab="login", **form_values):
-    """Shared render context for the login/signup landing page.
-
-    - Multi-tenant: both tabs always available, login active by default.
-    - Single-tenant, no account yet: only the signup tab (creates the one
-      account this install will ever have).
-    - Single-tenant, account already exists: only the login tab - matches
-      the old /setup behavior of never allowing a second account.
-    """
-    bootstrap = _needs_bootstrap()
-    show_signup = is_multi_tenant() or bootstrap
-    show_login = not bootstrap
-    return {
-        "show_login": show_login,
-        "show_signup": show_signup,
-        "active_tab": active_tab if (show_login and show_signup) else ("signup" if show_signup else "login"),
-        "questions": SECURITY_QUESTIONS,
-        **form_values,
-    }
+def _auth_context(active_tab="login", **form_values):
+    """Shared render context for the login/signup landing page."""
+    return {"active_tab": active_tab, "questions": SECURITY_QUESTIONS, **form_values}
 
 
 @bp.route("/cadastro", methods=["POST"])
 def signup():
-    if not is_multi_tenant() and not _needs_bootstrap():
-        abort(404)
-
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
@@ -90,7 +63,7 @@ def signup():
         flash("Conta criada com sucesso. Bem-vindo(a)!", "success")
         return redirect(url_for("dashboard.index"))
 
-    return render_template("auth/login.html", **_auth_tabs("signup", **form_values)), 400
+    return render_template("auth/login.html", **_auth_context("signup", **form_values)), 400
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -105,7 +78,7 @@ def login():
 
         if user is None or not user.check_password(password):
             flash("Usuário ou senha inválidos.", "danger")
-            return render_template("auth/login.html", **_auth_tabs("login", login_username=username)), 401
+            return render_template("auth/login.html", **_auth_context("login", login_username=username)), 401
 
         login_user(user)
         next_url = request.args.get("next")
@@ -113,7 +86,7 @@ def login():
             next_url = url_for("dashboard.index")
         return redirect(next_url)
 
-    return render_template("auth/login.html", **_auth_tabs("login"))
+    return render_template("auth/login.html", **_auth_context("login"))
 
 
 @bp.route("/logout")
@@ -133,7 +106,7 @@ def recover():
         if user is None or not user.security_question:
             flash(
                 "Não foi possível iniciar a recuperação para esse usuário. "
-                "Peça para quem tem acesso ao terminal rodar `flask create-admin`.",
+                "Entre em contato com o suporte.",
                 "danger",
             )
             return render_template("auth/recover.html", username=username)
