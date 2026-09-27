@@ -2,6 +2,7 @@ import os
 
 from flask import Flask, jsonify, redirect, request, url_for
 from flask_login import current_user
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
 from extensions import csrf, db, login_manager, migrate
@@ -22,6 +23,8 @@ _BLOCKED_ALLOWED_ENDPOINTS = {
 def create_app(config_object=Config):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_object)
+    # Behind the VPS's nginx: trust its X-Forwarded-For/Proto (one hop).
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     if not app.config.get("SECRET_KEY"):
         raise RuntimeError("SECRET_KEY não definida - configure a variável de ambiente (veja .env.example).")

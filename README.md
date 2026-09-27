@@ -45,13 +45,18 @@ flask create-admin --company-id <id>          # cria um usuário numa empresa, o
 
 ## Produção (Docker)
 
+Roda em `/opt/opsvenda` na VPS compartilhada, atrás do nginx do projeto
+necasecanecas (rede Docker `necasecanecas_default`), em
+https://opsvenda.montiqtech.com.br.
+
 ```bash
-cp .env.example .env   # SECRET_KEY obrigatória; DATABASE_URL (Postgres) e Mercado Pago recomendados
-docker compose up -d --build
+cd /opt/opsvenda
+git pull
+docker compose up -d --build   # .env: SECRET_KEY, POSTGRES_PASSWORD, Mercado Pago
 ```
 
-O entrypoint aplica as migrations (`flask db upgrade`) e sobe o Gunicorn.
-Com mais de um worker/réplica, use Postgres via `DATABASE_URL`.
+O compose sobe o app e um Postgres próprio (`opsvenda-db`); o entrypoint
+aplica as migrations (`flask db upgrade`) e sobe o Gunicorn.
 
 ## Estrutura do projeto
 
