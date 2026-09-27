@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY no .env}
-      DATABASE_URL: postgresql://opsvenda:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/opsvenda
+      DATABASE_URL: postgresql+psycopg://opsvenda:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}@db:5432/opsvenda
       MERCADO_PAGO_ACCESS_TOKEN: ${MERCADO_PAGO_ACCESS_TOKEN:-}
       MP_SANDBOX: ${MP_SANDBOX:-false}
     depends_on:
