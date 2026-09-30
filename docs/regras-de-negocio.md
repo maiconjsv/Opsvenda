@@ -273,7 +273,7 @@ Regras em [services/billing.py](../services/billing.py):
      pergunta o status ao Mercado Pago.
   3. O Mercado Pago também avisa pelo webhook `/assinatura/webhook`, se ele
      estiver cadastrado no painel.
-  4. **Conciliação:** o comando `flask billing-reconcile`, rodado por cron a
+  4. **Conciliação:** o comando `flask billing-reconcile`, rodado por um timer a
      cada 5 minutos no servidor, confere no Mercado Pago todas as cobranças
      pendentes das últimas 48 h. O pagamento é confirmado mesmo sem webhook
      e com a página fechada.

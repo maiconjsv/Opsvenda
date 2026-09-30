@@ -10,6 +10,7 @@ Produção: **https://opsvenda.montiqtech.com.br**
 - [Comandos do dia a dia](#comandos-do-dia-a-dia)
 - [nginx compartilhado (leia antes de editar)](#nginx-compartilhado-leia-antes-de-editar)
 - [Certificado TLS](#certificado-tls)
+- [Tarefas agendadas (systemd timers)](#tarefas-agendadas-systemd-timers)
 - [Backup do banco](#backup-do-banco)
 - [Mercado Pago](#mercado-pago)
 - [Deploy do zero (nova máquina)](#deploy-do-zero-nova-máquina)
@@ -65,8 +66,27 @@ git pull
 docker compose up -d --build
 docker compose ps                       # opsvenda-app deve ficar (healthy)
 docker logs --tail 30 opsvenda-app      # confira a migration e o boot do gunicorn
+docker exec ncas-web nginx -t && docker exec ncas-web nginx -s reload   # ver nota abaixo
 curl -s https://opsvenda.montiqtech.com.br/health
 ```
+
+**Por que o reload do nginx.** O rebuild recria o `opsvenda-app` com outro IP
+na rede Docker, e o nginx resolveu o nome `opsvenda-app` uma única vez, ao
+carregar a config. Sem o reload, o site responde **502** até o próximo
+reload. Isso aconteceu no deploy de 30/09/2026. A correção definitiva, ainda
+**não aplicada**, é trocar no bloco 443 do OpsVenda
+(seguindo o [procedimento seguro](#nginx-compartilhado-leia-antes-de-editar)):
+
+```nginx
+        # antes:  proxy_pass http://opsvenda-app:5000;
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $opsvenda_upstream http://opsvenda-app:5000;
+        proxy_pass $opsvenda_upstream;
+```
+
+Com isso, o nginx resolve o nome pelo DNS interno do Docker a cada 10 s, e o
+reload deixa de ser necessário. Os outros apps da VPS (bookcase, ofxconverter)
+têm o mesmo problema nos deploys deles.
 
 - A troca do container leva poucos segundos de indisponibilidade só para o
   OpsVenda. Os outros sites não são afetados.
@@ -178,15 +198,11 @@ para HTTPS e responde ao desafio do certbot.
   `necasecanecas_certbot_certs`.
 - O `ncas-certbot` tenta renovar a cada 12 h, e a renovação acontece quando
   faltam menos de 30 dias.
-- **Risco:** o nginx só carrega o certificado novo depois de um reload ou
-  restart, e o certbot **não** recarrega o nginx. Se ninguém fizer reload nos
-  30 dias entre a renovação e o vencimento, **todos os sites** exibem
-  certificado vencido. Recomendado: um cron semanal no host.
-
-```bash
-# crontab -e (root)
-0 4 * * 1 docker exec ncas-web nginx -s reload
-```
+- O nginx só carrega o certificado novo depois de um reload ou restart, e o
+  certbot **não** recarrega o nginx. Por isso existe o timer
+  `opsvenda-nginx-reload`, que faz `nginx -t` e reload toda segunda às 04:00
+  (ver [tarefas agendadas](#tarefas-agendadas-systemd-timers)). O reload
+  vale para todos os sites.
 
 - Verificar a validade:
 
@@ -194,14 +210,40 @@ para HTTPS e responde ao desafio do certbot.
 echo | openssl s_client -connect opsvenda.montiqtech.com.br:443 -servername opsvenda.montiqtech.com.br 2>/dev/null | openssl x509 -noout -dates
 ```
 
-## Backup do banco
+## Tarefas agendadas (systemd timers)
 
-**Ainda não há backup automático.** Configure um cron diário no host:
+A VPS **não tem cron instalado**. As tarefas usam timers do systemd, em
+`/etc/systemd/system/opsvenda-*`:
+
+| Timer | Quando | O que faz |
+|---|---|---|
+| `opsvenda-billing-reconcile` | 2 min após o boot e a cada 5 min | `docker exec opsvenda-app flask billing-reconcile`: confirma cobranças Pix pagas das últimas 48 h, com ou sem webhook |
+| `opsvenda-nginx-reload` | Segunda, 04:00 (`Persistent=true`: roda no boot se perdeu o horário) | `nginx -t` e reload do `ncas-web`, para os certificados renovados entrarem em uso |
 
 ```bash
-mkdir -p /root/backups/opsvenda
-# crontab -e (root)
-30 3 * * * docker exec opsvenda-db pg_dump -U opsvenda -Fc opsvenda > /root/backups/opsvenda/opsvenda-$(date +\%Y\%m\%d).dump && find /root/backups/opsvenda -name '*.dump' -mtime +14 -delete
+systemctl list-timers "opsvenda-*"                           # próximas execuções
+journalctl -u opsvenda-billing-reconcile.service -n 20       # saída das últimas execuções
+systemctl start opsvenda-billing-reconcile.service           # rodar agora
+systemctl disable --now opsvenda-nginx-reload.timer          # desligar um timer
+```
+
+Para criar outro timer, copie um par `.service` + `.timer`, rode
+`systemctl daemon-reload` e depois `systemctl enable --now <nome>.timer`.
+
+## Backup do banco
+
+**Ainda não há backup automático.** Há um backup manual de 30/09/2026 em
+`/root/backups/opsvenda/`, feito antes da migration 0002. Para automatizar,
+crie um timer como os de cima com este `ExecStart`:
+
+```bash
+/bin/sh -c 'docker exec opsvenda-db pg_dump -U opsvenda -Fc opsvenda > /root/backups/opsvenda/opsvenda-$(date +%%Y%%m%%d).dump && find /root/backups/opsvenda -name "*.dump" -mtime +14 -delete'
+```
+
+Backup manual antes de um deploy com migration:
+
+```bash
+docker exec opsvenda-db pg_dump -U opsvenda -Fc opsvenda > /root/backups/opsvenda/opsvenda-$(date +%Y%m%d%H%M).dump
 ```
 
 Restaurar (substitui os dados atuais):
@@ -225,12 +267,20 @@ não protege contra perda do servidor.
    docker compose up -d
    ```
 
-2. No painel do Mercado Pago (Suas integrações → Webhooks), cadastre a URL
-   `https://opsvenda.montiqtech.com.br/assinatura/webhook` para eventos de
-   pedidos/pagamentos. O código **não** envia `notification_url` na criação
-   da cobrança, então o webhook depende desse cadastro no painel. Sem ele, a
-   confirmação ainda funciona pelo polling da tela de pagamento, mas só
-   enquanto o usuário estiver com a página aberta.
+2. **Opcional:** no painel do Mercado Pago (Suas integrações → Webhooks →
+   Configurar notificações), cadastre a URL
+   `https://opsvenda.montiqtech.com.br/assinatura/webhook` com o evento
+   **Order (Mercado Pago)**. Na Orders API, a URL do webhook **só** pode ser
+   definida no painel; não existe campo por requisição.
+
+A confirmação não depende do webhook. Ela acontece por três caminhos,
+qualquer um basta:
+
+| Caminho | Quando confirma |
+|---|---|
+| Polling da tela de pagamento | A cada 5 s, enquanto o cliente está com a página aberta |
+| Webhook (se cadastrado) | Segundos após o pagamento |
+| Timer `opsvenda-billing-reconcile` | Em até 5 min, mesmo com a página fechada e sem webhook |
 
 ## Deploy do zero (nova máquina)
 

@@ -30,6 +30,6 @@ def register(app):
 
     @app.cli.command("billing-reconcile")
     def billing_reconcile():
-        """Confirm recent pending Pix charges that were paid (run by cron)."""
+        """Confirm recent pending Pix charges that were paid (run by the opsvenda-billing-reconcile systemd timer)."""
         checked, confirmed = billing.reconcile_pending_payments()
         click.echo(f"{checked} cobrança(s) pendente(s) verificada(s), {confirmed} confirmada(s).")

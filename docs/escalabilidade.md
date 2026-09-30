@@ -82,7 +82,7 @@ paginação com `LIMIT/OFFSET` ou cursor.
 ### 5. Workers síncronos e chamadas externas
 Chamadas ao Mercado Pago (timeout de 10 s) bloqueiam um dos 2 workers. O
 polling a cada 5 s na tela de Pix também consome workers (a conciliação por
-cron roda fora do Gunicorn, via `docker exec`). **Correção:**
+timer do systemd roda fora do Gunicorn, via `docker exec`). **Correção:**
 aumentar os workers conforme a RAM permitir (`--workers` no
 `docker-entrypoint.sh`) ou usar `--worker-class gthread --threads 4`, que
 atende I/O melhor com pouca memória.

@@ -97,7 +97,7 @@ def poll_and_confirm(payment) -> bool:
 
 def reconcile_pending_payments() -> tuple[int, int]:
     """Polls Mercado Pago for every recent pending charge and confirms the
-    paid ones. Run periodically (cron -> `flask billing-reconcile`) so a
+    paid ones. Run periodically (systemd timer -> `flask billing-reconcile`) so a
     payment is confirmed even when the webhook doesn't arrive and the
     customer already closed the payment page. Returns (checked, confirmed).
     """
