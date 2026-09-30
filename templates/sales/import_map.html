@@ -39,7 +39,7 @@
     {% for h in header %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
   </select>
 
-  <label>Número do pedido (opcional)</label>
+  <label>Número do pedido (recomendado: evita duplicar vendas ao importar o mesmo arquivo de novo)</label>
   <select name="map_order_number">
     <option value="">(nenhum)</option>
     {% for h in header %}<option value="{{ h }}">{{ h }}</option>{% endfor %}
@@ -69,7 +69,7 @@
 
   <label style="display:flex; align-items:center; gap:8px; margin-top:16px;">
     <input type="checkbox" name="create_missing_products" style="width:auto;">
-    Criar produtos automaticamente quando o SKU não existir (custo inicial R$ 0,00 — ajuste depois)
+    Criar produtos automaticamente quando o SKU não existir (ficam com custo pendente — ao informar o custo, as vendas importadas são recalculadas)
   </label>
 
   <button type="submit" class="btn btn-primary" style="margin-top:16px;">Importar</button>

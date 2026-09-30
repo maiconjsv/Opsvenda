@@ -2,6 +2,7 @@ import click
 
 from extensions import db
 from models import Company, User
+from services import billing
 
 
 def register(app):
@@ -26,3 +27,9 @@ def register(app):
         user.set_password(password)
         db.session.commit()
         click.echo("Pronto.")
+
+    @app.cli.command("billing-reconcile")
+    def billing_reconcile():
+        """Confirm recent pending Pix charges that were paid (run by cron)."""
+        checked, confirmed = billing.reconcile_pending_payments()
+        click.echo(f"{checked} cobrança(s) pendente(s) verificada(s), {confirmed} confirmada(s).")

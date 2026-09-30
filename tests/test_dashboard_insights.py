@@ -90,3 +90,28 @@ def test_dashboard_handles_zero_profit_previous_period(client, db, company):
 
     assert resp.status_code == 200
     assert "Período anterior equivalente fechou em R$ 0,00" in html
+
+
+def test_dashboard_totals_cover_all_rows_while_table_is_capped(client, db, company):
+    product = Product(
+        company_id=company.id, sku="X3", name="Produto Volume",
+        current_price_cents=1000, current_cost_cents=400, stock_qty=0,
+    )
+    margin_profile = MarginProfile(company_id=company.id, name="Perfil", platform_fee_pct=0.10)
+    db.session.add_all([product, margin_profile])
+    db.session.commit()
+    _login(client, db, company)
+
+    for day in range(1, 29):
+        for _ in range(4):  # 112 items, profit 500 each
+            _make_sale(db, company, product, margin_profile, f"2025-02-{day:02d}", 1000, 400)
+
+    html = client.get("/").get_data(as_text=True)
+    assert "Lucro de R$ 560.00 no período" in html  # 112 x R$ 5,00, all rows summed in SQL
+    assert "Mostrando 100 de 112 itens" in html
+
+    resp = client.get("/exportar.csv")
+    lines = resp.get_data(as_text=True).strip().splitlines()
+    assert lines[0].startswith("data_venda,pedido,sku")
+    assert len(lines) == 1 + 112
+    assert lines[1].startswith("2025-02-28")  # newest first

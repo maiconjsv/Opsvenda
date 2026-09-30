@@ -52,9 +52,16 @@ def check_status(payment_id):
 @bp.route("/webhook", methods=["POST"])
 @csrf.exempt
 def webhook():
+    # Mercado Pago sends the order id both in the query string
+    # (?data.id=...&type=order) and in the JSON body. The payload is never
+    # trusted: poll_and_confirm() re-checks the real status with the API.
     data = request.get_json(silent=True) or {}
     nested = data.get("data")
-    resource_id = (nested.get("id") if isinstance(nested, dict) else None) or data.get("id")
+    resource_id = (
+        request.args.get("data.id")
+        or (nested.get("id") if isinstance(nested, dict) else None)
+        or data.get("id")
+    )
     if not resource_id:
         return jsonify({"status": "ignorado"}), 200
 

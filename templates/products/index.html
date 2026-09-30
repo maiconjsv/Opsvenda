@@ -33,7 +33,7 @@
     {% for p in products %}
     <tr>
       <td>{{ p.sku }}</td>
-      <td><a href="{{ url_for('products.edit', product_id=p.id) }}">{{ p.name }}</a></td>
+      <td><a href="{{ url_for('products.edit', product_id=p.id) }}">{{ p.name }}</a>{% if p.cost_pending %} <span class="badge badge-pending">custo pendente</span>{% endif %}</td>
       <td class="text-right">R$ {{ "%.2f"|format(p.current_price) }}</td>
       <td class="text-right">{{ p.stock_qty }}</td>
       <td>{% if p.active %}<span class="badge badge-completed">ativo</span>{% else %}<span class="badge badge-cancelled">inativo</span>{% endif %}</td>

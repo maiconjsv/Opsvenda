@@ -52,6 +52,10 @@
     <li class="muted">Sem vendas no período anterior equivalente para comparar.</li>
     {% endif %}
 
+    {% if insights.pending_cost_count %}
+    <li class="text-danger">{{ insights.pending_cost_count }} venda(s) de produtos com <strong>custo pendente</strong>: o lucro está superestimado. Informe o custo em <a href="{{ url_for('products.index') }}">Produtos</a>.</li>
+    {% endif %}
+
     {% if insights.top_product %}
     <li>Produto mais lucrativo: <strong>{{ insights.top_product.name }}</strong> (R$ {{ "%.2f"|format(insights.top_product.profit) }} de lucro).</li>
     {% endif %}

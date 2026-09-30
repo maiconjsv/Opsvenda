@@ -24,8 +24,14 @@
     </div>
     <div>
       <label>Custo unitário atual (R$)</label>
+      {% if product and product.cost_pending %}
+      <input type="text" inputmode="decimal" name="cost" placeholder="Informe o custo"
+             value="{{ form.cost if form else '' }}">
+      <p class="text-danger" style="margin:4px 0 0; font-size:0.85em;">Custo pendente: produto criado por importação. Ao informar o custo, as vendas importadas dele são recalculadas.</p>
+      {% else %}
       <input type="text" inputmode="decimal" name="cost"
              value="{{ form.cost if form else ('%.2f'|format(product.current_cost) if product else '0.00') }}">
+      {% endif %}
     </div>
   </div>
   {% if not product %}

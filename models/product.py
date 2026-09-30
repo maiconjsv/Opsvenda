@@ -16,6 +16,9 @@ class Product(db.Model):
     current_cost_cents = db.Column(db.Integer, nullable=False, default=0)
     stock_qty = db.Column(db.Integer, nullable=False, default=0)
     active = db.Column(db.Boolean, nullable=False, default=True)
+    # True while the real cost is unknown (product auto-created by a CSV
+    # import). Cleared when the user informs the cost - see services/costs.py.
+    cost_pending = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

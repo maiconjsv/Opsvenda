@@ -17,8 +17,9 @@ from flask import abort
 from werkzeug.utils import secure_filename
 
 from extensions import db
-from models import MarginProfile, Product, Sale, SaleItem, StockMovement
+from models import MarginProfile, Product, Sale, SaleItem
 from services.pricing import calculate_sale_item, to_cents
+from services.stock import adjust_stock
 
 REQUIRED_FIELDS = ("sku", "quantity", "unit_price")
 OPTIONAL_FIELDS = ("order_number", "product_name", "sale_date")
@@ -87,7 +88,26 @@ class ImportRowError:
 class ImportResult:
     sales_created: int = 0
     products_created: int = 0
+    duplicates_skipped: int = 0
+    # False when no order-number column was mapped: without it duplicates
+    # can't be detected, and the result page warns about re-importing.
+    dedup_enabled: bool = True
+    # Names of products created with an unknown cost (cost_pending).
+    pending_cost_products: list[str] = field(default_factory=list)
     errors: list[ImportRowError] = field(default_factory=list)
+
+
+def _existing_order_keys(company_id: int, order_numbers: set[str]) -> set[tuple[str, str]]:
+    """(order_number, sku) pairs already imported/registered for the company."""
+    if not order_numbers:
+        return set()
+    rows = (
+        db.session.query(Sale.order_number, SaleItem.product_sku_snapshot)
+        .join(SaleItem, SaleItem.sale_id == Sale.id)
+        .filter(Sale.company_id == company_id, Sale.order_number.in_(order_numbers))
+        .all()
+    )
+    return {(order_number, sku) for order_number, sku in rows}
 
 
 def run_import(
@@ -103,13 +123,26 @@ def run_import(
     margin_profile = MarginProfile.query.filter_by(id=margin_profile_id, company_id=company_id).first()
     if margin_profile is None:
         abort(404)
-    result = ImportResult()
+
+    def cell(row, field_name):
+        column = column_mapping.get(field_name)
+        return (row.get(column) or "").strip() if column else ""
+
+    result = ImportResult(dedup_enabled=bool(column_mapping.get("order_number")))
+
+    # One query each for products and already-imported orders, instead of one per row.
+    skus = {cell(row, "sku") for row in rows} - {""}
+    products_by_sku = {
+        p.sku: p
+        for p in Product.query.filter(Product.company_id == company_id, Product.sku.in_(skus))
+    } if skus else {}
+    seen_keys = _existing_order_keys(company_id, {cell(row, "order_number") for row in rows} - {""})
 
     for i, row in enumerate(rows, start=2):  # row 1 is the header
         try:
-            sku = row.get(column_mapping.get("sku", ""), "").strip()
-            qty_raw = row.get(column_mapping.get("quantity", ""), "").strip()
-            price_raw = row.get(column_mapping.get("unit_price", ""), "").strip()
+            sku = cell(row, "sku")
+            qty_raw = cell(row, "quantity")
+            price_raw = cell(row, "unit_price")
 
             if not sku or not qty_raw or not price_raw:
                 result.errors.append(ImportRowError(i, "SKU, quantidade ou preço em branco."))
@@ -118,34 +151,34 @@ def run_import(
             quantity = int(float(qty_raw))
             unit_price_cents = to_cents(price_raw)
 
-            order_number = None
-            if column_mapping.get("order_number"):
-                order_number = row.get(column_mapping["order_number"], "").strip() or None
+            # Same order + same SKU already registered (earlier import, or
+            # earlier in this same file): re-importing must not duplicate it.
+            order_number = cell(row, "order_number") or None
+            if order_number and (order_number, sku) in seen_keys:
+                result.duplicates_skipped += 1
+                continue
 
-            sale_date = datetime.now(timezone.utc)
-            if column_mapping.get("sale_date"):
-                raw_date = row.get(column_mapping["sale_date"], "").strip()
-                sale_date = _parse_date(raw_date) or sale_date
+            sale_date = _parse_date(cell(row, "sale_date")) or datetime.now(timezone.utc)
 
-            product = Product.query.filter_by(sku=sku, company_id=company_id).first()
+            product = products_by_sku.get(sku)
             if product is None:
                 if not create_missing_products:
                     result.errors.append(ImportRowError(i, f"SKU '{sku}' não encontrado."))
                     continue
-                product_name = sku
-                if column_mapping.get("product_name"):
-                    product_name = row.get(column_mapping["product_name"], "").strip() or sku
                 product = Product(
                     company_id=company_id,
                     sku=sku,
-                    name=product_name,
+                    name=cell(row, "product_name") or sku,
                     current_price_cents=unit_price_cents,
                     current_cost_cents=0,
+                    cost_pending=True,
                     stock_qty=0,
                 )
                 db.session.add(product)
                 db.session.flush()
+                products_by_sku[sku] = product
                 result.products_created += 1
+                result.pending_cost_products.append(product.name)
 
             calc = calculate_sale_item(
                 quantity=quantity,
@@ -179,15 +212,15 @@ def run_import(
                     total_fees_cents=calc.total_fees_cents,
                     total_cost_cents=calc.total_cost_cents,
                     net_profit_cents=calc.net_profit_cents,
+                    cost_pending=product.cost_pending,
                 )
             )
             db.session.add(sale)
 
-            product.stock_qty -= quantity
-            db.session.add(
-                StockMovement(product_id=product.id, delta_qty=-quantity, reason="venda_import")
-            )
+            adjust_stock(product.id, -quantity, "venda_import")
 
+            if order_number:
+                seen_keys.add((order_number, sku))
             result.sales_created += 1
         except (ValueError, KeyError) as exc:
             result.errors.append(ImportRowError(i, str(exc)))

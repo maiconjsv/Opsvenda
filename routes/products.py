@@ -4,7 +4,9 @@ from flask_login import current_user, login_required
 from extensions import db
 from models import Product, StockMovement
 from scoping import get_scoped_or_404, scoped_query
+from services.costs import apply_informed_cost
 from services.pricing import to_cents
+from services import stock
 
 bp = Blueprint("products", __name__, url_prefix="/produtos")
 
@@ -77,9 +79,24 @@ def edit(product_id):
         product.sku = request.form["sku"].strip() or None
         product.name = request.form["name"].strip()
         product.current_price_cents = to_cents(request.form["price"])
-        product.current_cost_cents = to_cents(request.form.get("cost") or 0)
+        cost_raw = request.form.get("cost", "").strip()
+        product.current_cost_cents = to_cents(cost_raw or 0)
+
+        # A pending cost stays pending while the field is left blank; filling
+        # it in (even with 0) confirms the cost and fixes the pending sales.
+        recalculated = 0
+        if product.cost_pending and cost_raw:
+            recalculated = apply_informed_cost(product)
         db.session.commit()
-        flash(f"Produto '{product.name}' atualizado. Vendas anteriores não são afetadas.", "success")
+
+        if recalculated:
+            flash(
+                f"Produto '{product.name}' atualizado. {recalculated} venda(s) importada(s) sem custo "
+                "foram recalculadas com o custo informado.",
+                "success",
+            )
+        else:
+            flash(f"Produto '{product.name}' atualizado. Vendas anteriores não são afetadas.", "success")
         return redirect(url_for("products.index"))
 
     return render_template("products/form.html", product=product, form=None)
@@ -102,8 +119,7 @@ def adjust_stock(product_id):
     reason = request.form.get("reason", "ajuste")
     notes = request.form.get("notes", "").strip() or None
 
-    product.stock_qty += delta
-    db.session.add(StockMovement(product_id=product.id, delta_qty=delta, reason=reason, notes=notes))
+    stock.adjust_stock(product.id, delta, reason, notes)
     db.session.commit()
     flash("Estoque atualizado.", "success")
     return redirect(url_for("products.edit", product_id=product.id))

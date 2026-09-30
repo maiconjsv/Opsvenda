@@ -5,12 +5,15 @@ from datetime import datetime, timedelta, timezone
 
 from extensions import db
 from models import Payment
+from models.payment import STATUS_PENDING
 from services import mercadopago
 
 TRIAL_DAYS = 90
 SUBSCRIPTION_DAYS = 30
 GRACE_DAYS = 3
 PRICE_CENTS = 499
+# Pix charges expire well before this; older pending ones aren't worth polling.
+RECONCILE_WINDOW_HOURS = 48
 
 
 def _now() -> datetime:
@@ -90,3 +93,15 @@ def poll_and_confirm(payment) -> bool:
         confirm_payment(payment)
         return True
     return False
+
+
+def reconcile_pending_payments() -> tuple[int, int]:
+    """Polls Mercado Pago for every recent pending charge and confirms the
+    paid ones. Run periodically (cron -> `flask billing-reconcile`) so a
+    payment is confirmed even when the webhook doesn't arrive and the
+    customer already closed the payment page. Returns (checked, confirmed).
+    """
+    since = _now() - timedelta(hours=RECONCILE_WINDOW_HOURS)
+    pending = Payment.query.filter(Payment.status == STATUS_PENDING, Payment.created_at >= since).all()
+    confirmed = sum(1 for payment in pending if poll_and_confirm(payment))
+    return len(pending), confirmed

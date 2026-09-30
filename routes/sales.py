@@ -1,12 +1,15 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from sqlalchemy import update
+
 from extensions import db
-from models import MarginProfile, Product, Sale, SaleItem, StockMovement
+from models import MarginProfile, Product, Sale, SaleItem
 from models.sale import STATUS_CANCELLED
 from scoping import get_scoped_or_404, scoped_get_or_none, scoped_query
 from services import csv_import
 from services.pricing import calculate_sale_item, to_cents
+from services.stock import adjust_stock
 
 bp = Blueprint("sales", __name__, url_prefix="/vendas")
 
@@ -95,12 +98,12 @@ def _create_manual_sale(form):
             total_fees_cents=calc.total_fees_cents,
             total_cost_cents=calc.total_cost_cents,
             net_profit_cents=calc.net_profit_cents,
+            cost_pending=product.cost_pending and not unit_cost_raw,
         )
     )
     db.session.add(sale)
 
-    product.stock_qty -= quantity
-    db.session.add(StockMovement(product_id=product.id, delta_qty=-quantity, reason="venda"))
+    adjust_stock(product.id, -quantity, "venda")
 
     db.session.commit()
     return None, sale
@@ -117,19 +120,23 @@ def detail(sale_id):
 @login_required
 def cancel(sale_id):
     sale = get_scoped_or_404(Sale, sale_id)
-    if sale.status == STATUS_CANCELLED:
+
+    # Conditional UPDATE instead of checking sale.status in Python: of two
+    # concurrent cancel requests only one matches the row, so the stock is
+    # returned exactly once.
+    result = db.session.execute(
+        update(Sale)
+        .where(Sale.id == sale.id, Sale.status != STATUS_CANCELLED)
+        .values(status=STATUS_CANCELLED)
+        .execution_options(synchronize_session="fetch")
+    )
+    if result.rowcount == 0:
+        db.session.rollback()
         flash("Essa venda já está cancelada.", "warning")
         return redirect(url_for("sales.detail", sale_id=sale.id))
 
     for item in sale.items:
-        if item.product:
-            item.product.stock_qty += item.quantity
-            db.session.add(
-                StockMovement(
-                    product_id=item.product_id, delta_qty=item.quantity, reason="estorno"
-                )
-            )
-    sale.status = STATUS_CANCELLED
+        adjust_stock(item.product_id, item.quantity, "estorno")
     db.session.commit()
     flash(f"Venda #{sale.id} cancelada e estoque estornado.", "info")
     return redirect(url_for("sales.detail", sale_id=sale.id))

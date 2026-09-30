@@ -1,18 +1,26 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, Response, render_template, request
+from flask import Blueprint, Response, render_template, request, stream_with_context
 from flask_login import current_user, login_required
+from sqlalchemy import func
+from sqlalchemy.orm import contains_eager
 
 from models import Product, Sale, SaleItem
 from models.sale import STATUS_CANCELLED
 from scoping import scoped_query
-from services.csv_export import sales_to_csv
+from services.csv_export import iter_sales_csv
 from services.pricing import from_cents
 
 bp = Blueprint("dashboard", __name__, url_prefix="/")
 
+TABLE_ROWS = 100
+
 
 def _items_query(date_from, date_to, product_id):
+    """Non-cancelled sale items of the current company matching the filters.
+    Callers aggregate it in SQL (with_entities) or page it - never .all() on
+    the unbounded query.
+    """
     query = SaleItem.query.join(Sale).filter(
         Sale.status != STATUS_CANCELLED, Sale.company_id == current_user.company_id
     )
@@ -34,15 +42,11 @@ def _items_query(date_from, date_to, product_id):
         except ValueError:
             pass
 
-    return query.order_by(Sale.sale_date.desc())
+    return query
 
 
-def _filtered_items(args):
-    return _items_query(
-        args.get("date_from", "").strip(),
-        args.get("date_to", "").strip(),
-        args.get("product_id", "").strip(),
-    )
+def _sum(column):
+    return func.coalesce(func.sum(column), 0)
 
 
 def _previous_period_profit_cents(date_from, date_to, product_id):
@@ -60,30 +64,32 @@ def _previous_period_profit_cents(date_from, date_to, product_id):
     prev_end = start - timedelta(days=1)
     prev_start = prev_end - period_length + timedelta(days=1)
 
-    prev_items = _items_query(
+    return _items_query(
         prev_start.strftime("%Y-%m-%d"), prev_end.strftime("%Y-%m-%d"), product_id
-    ).all()
-    return sum(i.net_profit_cents for i in prev_items)
+    ).with_entities(_sum(SaleItem.net_profit_cents)).scalar()
 
 
-def _build_insights(items, profit_total_cents, date_from, date_to, product_id):
-    loss_items = [i for i in items if i.net_profit_cents < 0]
-    loss_total_cents = -sum(i.net_profit_cents for i in loss_items)
+def _build_insights(query, profit_total_cents, date_from, date_to, product_id):
+    loss_count, loss_sum_cents = (
+        query.filter(SaleItem.net_profit_cents < 0)
+        .with_entities(func.count(SaleItem.id), _sum(SaleItem.net_profit_cents))
+        .one()
+    )
 
-    profit_by_product = {}
-    for i in items:
-        profit_by_product[i.product_name_snapshot] = (
-            profit_by_product.get(i.product_name_snapshot, 0) + i.net_profit_cents
-        )
+    profit_by_product = query.with_entities(
+        SaleItem.product_name_snapshot, func.sum(SaleItem.net_profit_cents).label("profit")
+    ).group_by(SaleItem.product_name_snapshot)
+    top = profit_by_product.order_by(func.sum(SaleItem.net_profit_cents).desc()).first()
+    bottom = profit_by_product.order_by(func.sum(SaleItem.net_profit_cents).asc()).first()
 
-    top_product = None
+    top_product = {"name": top[0], "profit": from_cents(top[1])} if top else None
     bottom_product = None
-    if profit_by_product:
-        top_name, top_cents = max(profit_by_product.items(), key=lambda kv: kv[1])
-        top_product = {"name": top_name, "profit": from_cents(top_cents)}
-        bottom_name, bottom_cents = min(profit_by_product.items(), key=lambda kv: kv[1])
-        if bottom_cents < 0:
-            bottom_product = {"name": bottom_name, "loss": from_cents(-bottom_cents)}
+    if bottom and bottom[1] < 0:
+        bottom_product = {"name": bottom[0], "loss": from_cents(-bottom[1])}
+
+    pending_cost_count = (
+        query.filter(SaleItem.cost_pending.is_(True)).with_entities(func.count(SaleItem.id)).scalar()
+    )
 
     previous_profit_cents = None
     profit_change_pct = None
@@ -96,12 +102,13 @@ def _build_insights(items, profit_total_cents, date_from, date_to, product_id):
 
     return {
         "has_period_filter": bool(date_from and date_to),
-        "loss_count": len(loss_items),
-        "loss_total": from_cents(loss_total_cents),
+        "loss_count": loss_count,
+        "loss_total": from_cents(-loss_sum_cents),
         "top_product": top_product,
         "bottom_product": bottom_product,
         "previous_profit": from_cents(previous_profit_cents) if previous_profit_cents is not None else None,
         "profit_change_pct": profit_change_pct,
+        "pending_cost_count": pending_cost_count,
     }
 
 
@@ -112,13 +119,23 @@ def index():
     date_to = request.args.get("date_to", "").strip()
     product_id = request.args.get("product_id", "").strip()
 
-    items = _items_query(date_from, date_to, product_id).all()
+    query = _items_query(date_from, date_to, product_id)
 
-    gross_total_cents = sum(i.gross_total_cents for i in items)
-    fees_total_cents = sum(i.total_fees_cents for i in items)
-    cost_total_cents = sum(i.total_cost_cents for i in items)
-    profit_total_cents = sum(i.net_profit_cents for i in items)
-    units_sold = sum(i.quantity for i in items)
+    (
+        gross_total_cents,
+        fees_total_cents,
+        cost_total_cents,
+        profit_total_cents,
+        units_sold,
+        total_rows,
+    ) = query.with_entities(
+        _sum(SaleItem.gross_total_cents),
+        _sum(SaleItem.total_fees_cents),
+        _sum(SaleItem.total_cost_cents),
+        _sum(SaleItem.net_profit_cents),
+        _sum(SaleItem.quantity),
+        func.count(SaleItem.id),
+    ).one()
     avg_margin_pct = (profit_total_cents / gross_total_cents * 100) if gross_total_cents else 0.0
 
     kpis = {
@@ -130,29 +147,44 @@ def index():
         "avg_margin_pct": avg_margin_pct,
     }
 
-    insights = _build_insights(items, profit_total_cents, date_from, date_to, product_id)
+    insights = _build_insights(query, profit_total_cents, date_from, date_to, product_id)
+
+    items = (
+        query.options(contains_eager(SaleItem.sale))
+        .order_by(Sale.sale_date.desc(), SaleItem.id.desc())
+        .limit(TABLE_ROWS)
+        .all()
+    )
 
     products = scoped_query(Product).order_by(Product.name).all()
 
     return render_template(
         "dashboard/index.html",
-        items=items[:100],
+        items=items,
         kpis=kpis,
         insights=insights,
         products=products,
         filters=request.args,
-        total_rows=len(items),
+        total_rows=total_rows,
     )
 
 
 @bp.route("/exportar.csv")
 @login_required
 def export_csv():
-    items = _filtered_items(request.args).all()
-    csv_content = sales_to_csv(items)
+    items = (
+        _items_query(
+            request.args.get("date_from", "").strip(),
+            request.args.get("date_to", "").strip(),
+            request.args.get("product_id", "").strip(),
+        )
+        .options(contains_eager(SaleItem.sale))
+        .order_by(Sale.sale_date.desc(), SaleItem.id.desc())
+        .yield_per(1000)
+    )
+    # Streamed in batches of 1000 rows, so a large export never sits whole in memory.
     return Response(
-        csv_content,
+        stream_with_context(iter_sales_csv(items)),
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=vendas.csv"},
     )
-

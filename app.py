@@ -35,7 +35,8 @@ def create_app(config_object=Config):
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
     db.init_app(app)
-    migrate.init_app(app, db, directory=app.config["MIGRATIONS_DIR"])
+    # render_as_batch defaults to True in Flask-Migrate 4 (a SQLite workaround); Postgres-only here.
+    migrate.init_app(app, db, directory=app.config["MIGRATIONS_DIR"], render_as_batch=False)
     login_manager.init_app(app)
     csrf.init_app(app)
 

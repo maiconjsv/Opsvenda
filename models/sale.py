@@ -64,6 +64,10 @@ class SaleItem(db.Model):
     total_fees_cents = db.Column(db.Integer, nullable=False)
     total_cost_cents = db.Column(db.Integer, nullable=False)
     net_profit_cents = db.Column(db.Integer, nullable=False)
+    # Sold while the product's cost was unknown: the cost snapshot is a
+    # placeholder, and this is the ONLY case where a snapshot is recalculated
+    # (once, when the cost is informed - see services/costs.py).
+    cost_pending = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     sale = db.relationship("Sale", back_populates="items")
     product = db.relationship("Product")

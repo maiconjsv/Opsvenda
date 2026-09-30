@@ -3,28 +3,39 @@ import io
 
 from services.pricing import from_cents
 
+HEADER = [
+    "data_venda",
+    "pedido",
+    "sku",
+    "produto",
+    "quantidade",
+    "preco_unitario",
+    "custo_unitario",
+    "receita_bruta",
+    "taxas_totais",
+    "custo_total",
+    "lucro_liquido",
+    "margem_pct",
+    "status",
+    "origem",
+]
 
-def sales_to_csv(sale_items) -> str:
+
+def iter_sales_csv(sale_items):
+    """Yields the CSV one line at a time, so the export can be streamed
+    without building the whole file in memory.
+    """
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(
-        [
-            "data_venda",
-            "pedido",
-            "sku",
-            "produto",
-            "quantidade",
-            "preco_unitario",
-            "custo_unitario",
-            "receita_bruta",
-            "taxas_totais",
-            "custo_total",
-            "lucro_liquido",
-            "margem_pct",
-            "status",
-            "origem",
-        ]
-    )
+
+    def flush():
+        line = buffer.getvalue()
+        buffer.seek(0)
+        buffer.truncate(0)
+        return line
+
+    writer.writerow(HEADER)
+    yield flush()
     for item in sale_items:
         writer.writerow(
             [
@@ -44,4 +55,4 @@ def sales_to_csv(sale_items) -> str:
                 item.sale.source,
             ]
         )
-    return buffer.getvalue()
+        yield flush()

@@ -198,3 +198,58 @@ def test_unblocked_company_reaches_dashboard(client, db, company):
     _login(client, db, company)
     resp = client.get("/")
     assert resp.status_code == 200
+
+
+def test_webhook_reads_order_id_from_query_string(client, db, company, monkeypatch):
+    payment = Payment(
+        company_id=company.id, external_reference="ref-qs", amount_cents=499, mp_order_id="ORD-QS"
+    )
+    db.session.add(payment)
+    db.session.commit()
+    monkeypatch.setenv("MERCADO_PAGO_ACCESS_TOKEN", "TEST-token")
+    monkeypatch.setattr(
+        "services.mercadopago.requests.get",
+        lambda *a, **k: _FakeResponse({"status": "processed", "status_detail": "accredited"}),
+    )
+
+    resp = client.post("/assinatura/webhook?data.id=ORD-QS&type=order", json={"action": "order.processed"})
+
+    assert resp.get_json()["status"] == "ok"
+    db.session.refresh(payment)
+    assert payment.status == "paid"
+
+
+def test_reconcile_confirms_recent_paid_charges_without_webhook(db, company, monkeypatch):
+    company.access_until = _now() + timedelta(days=5)
+    db.session.commit()
+    recent = Payment(company_id=company.id, external_reference="r-new", amount_cents=499, mp_order_id="ORD-NEW")
+    stale = Payment(
+        company_id=company.id, external_reference="r-old", amount_cents=499, mp_order_id="ORD-OLD",
+        created_at=_now() - timedelta(days=3),
+    )
+    db.session.add_all([recent, stale])
+    db.session.commit()
+
+    polled = []
+
+    def fake_get(url, *a, **k):
+        polled.append(url)
+        return _FakeResponse({"status": "processed", "status_detail": "accredited"})
+
+    monkeypatch.setenv("MERCADO_PAGO_ACCESS_TOKEN", "TEST-token")
+    monkeypatch.setattr("services.mercadopago.requests.get", fake_get)
+
+    checked, confirmed = billing.reconcile_pending_payments()
+
+    assert (checked, confirmed) == (1, 1)
+    assert all("ORD-OLD" not in url for url in polled)  # outside the window, not polled
+    db.session.refresh(recent)
+    db.session.refresh(stale)
+    assert recent.status == "paid"
+    assert stale.status == "pending"
+
+
+def test_billing_reconcile_cli_command(app, db, company, monkeypatch):
+    monkeypatch.setattr("services.billing.reconcile_pending_payments", lambda: (3, 1))
+    result = app.test_cli_runner().invoke(args=["billing-reconcile"])
+    assert "3 cobrança(s) pendente(s) verificada(s), 1 confirmada(s)." in result.output

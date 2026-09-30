@@ -16,10 +16,34 @@
     <div class="value">{{ result.products_created }}</div>
   </div>
   <div class="kpi-card">
+    <div class="label">Duplicadas ignoradas</div>
+    <div class="value">{{ result.duplicates_skipped }}</div>
+  </div>
+  <div class="kpi-card">
     <div class="label">Linhas com erro</div>
     <div class="value {{ 'negative' if result.errors }}">{{ result.errors|length }}</div>
   </div>
 </div>
+
+{% if not result.dedup_enabled %}
+<div class="flash flash-warning">
+  A coluna do nº do pedido não foi mapeada, então não foi possível detectar vendas já importadas.
+  Importar este arquivo de novo vai duplicar as vendas.
+</div>
+{% endif %}
+
+{% if result.pending_cost_products %}
+<div class="card">
+  <h3>Produtos com custo pendente</h3>
+  <p class="muted">
+    Estes produtos foram criados sem custo, então o lucro das vendas deles está superestimado.
+    Informe o custo em <a href="{{ url_for('products.index') }}">Produtos</a> e as vendas importadas serão recalculadas.
+  </p>
+  <ul>
+    {% for name in result.pending_cost_products %}<li>{{ name }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
 
 {% if result.errors %}
 <div class="card">
