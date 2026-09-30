@@ -41,8 +41,30 @@ echo "Commit: $(git log --oneline -1)"
 
 if [ "$RUN_TESTS" = 1 ]; then
   step "Rodando os testes"
-  python -m pytest --version >/dev/null 2>&1 || fail "pytest não encontrado. Ative o venv (source .venv/bin/activate) ou use --skip-tests."
-  python -m pytest -q || fail "testes falharam; deploy cancelado."
+  # Python of the active venv, else the project's venv/ or .venv/.
+  PY=""
+  if [ -n "${VIRTUAL_ENV:-}" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then
+    PY="$VIRTUAL_ENV/bin/python"
+  else
+    for dir in venv .venv; do
+      if [ -x "$dir/bin/python" ]; then PY="$dir/bin/python"; break; fi
+    done
+  fi
+  [ -n "$PY" ] || fail "nenhum venv encontrado (venv/ ou .venv/). Crie um (docs/desenvolvimento.md) ou use --skip-tests."
+  "$PY" -m pytest --version >/dev/null 2>&1 \
+    || fail "pytest não está instalado em $PY. Rode: $PY -m pip install -r requirements-dev.txt  (ou use --skip-tests)."
+  "$PY" - <<'EOF' || fail "Postgres de teste inacessível. Instale e crie o banco opsvenda_test (docs/desenvolvimento.md#banco-local), defina TEST_DATABASE_URL, ou use --skip-tests."
+import os, sys
+import psycopg
+url = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql+psycopg://opsvenda:opsvenda@localhost:5432/opsvenda_test"
+).replace("+psycopg", "", 1)
+try:
+    psycopg.connect(url, connect_timeout=3).close()
+except psycopg.Error as exc:
+    sys.exit(f"  {exc}".rstrip())
+EOF
+  "$PY" -m pytest -q || fail "testes falharam; deploy cancelado."
 fi
 
 step "Deploy em $HOST"
