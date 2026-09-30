@@ -76,17 +76,18 @@ templates/, static/ Jinja2, CSS e JS
 migrations/         Alembic (baseline 0001_initial)
 tests/              pytest contra Postgres
 docs/               esta documentação
+deploy.sh           deploy para a VPS (roda da sua máquina)
 Dockerfile, docker-compose.yml, docker-entrypoint.sh   produção
 ```
 
-## Deploy em uma linha
+## Deploy
 
 ```bash
-ssh root@162.35.161.67 'cd /opt/opsvenda && git pull && docker compose up -d --build'
+git push origin main
+./deploy.sh              # testes, backup do banco, build, reload do nginx e checagem dos sites
 ```
 
-Antes, leia [deploy](docs/deploy.md#atualizar-a-produção), principalmente as
-partes sobre migrations e rollback.
+Detalhes, rollback e operação em [deploy](docs/deploy.md#atualizar-a-produção).
 
 ## Licença
 

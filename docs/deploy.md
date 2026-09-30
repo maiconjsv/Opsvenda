@@ -50,14 +50,32 @@ O que acontece quando o container sobe
 
 ## Atualizar a produção
 
-Na sua máquina: testes passando e commit enviado.
+Use o [deploy.sh](../deploy.sh), rodando da sua máquina com o venv ativado:
 
 ```bash
-pytest
 git push origin main
+./deploy.sh                 # ou ./deploy.sh --skip-tests
 ```
 
-No servidor:
+O que ele faz, parando no primeiro erro:
+
+| Onde | Passo |
+|---|---|
+| Local | Confere que está na `main`, sem alterações pendentes e igual a `origin/main` (push feito) |
+| Local | Roda `pytest` (pule com `--skip-tests`) |
+| Servidor | Backup do banco em `/root/backups/opsvenda/*-pre-deploy.dump` (mantém 30 dias) |
+| Servidor | `git fetch` + `merge --ff-only` até **exatamente** o commit local; recusa se o servidor divergiu |
+| Servidor | `docker compose up -d --build` (as migrations rodam no boot) e espera o app ficar *healthy* (até 2 min) |
+| Servidor | Se o app não subir: mostra os logs e imprime os comandos de rollback com o commit anterior e o backup |
+| Servidor | `nginx -t` + reload (evita o 502, ver abaixo) |
+| Local | `/health` do OpsVenda e página inicial dos outros 4 sites da VPS |
+
+Tudo no servidor roda numa única sessão SSH, então a senha é pedida uma vez.
+Outro destino: `OPSVENDA_HOST=usuario@host ./deploy.sh`.
+
+### Passo a passo manual
+
+Equivalente ao script, se precisar fazer à mão no servidor:
 
 ```bash
 ssh root@162.35.161.67
